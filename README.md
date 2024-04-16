@@ -1,2 +1,2 @@
 # rust-projects
-Small projects I created whilst learning Rust
+Small projects I created whilst learning Rust.

@@ -7,14 +7,11 @@ fn main() {
     let mut pos = true;
 
     for i in (1..10000000000_i64).step_by(2) {
-        match pos {
-            true => {
-                pi += 1.0 / (i as f64);
-            }
-            false => {
-                pi -= 1.0 / (i as f64);
-            }
-        };
+        if pos {
+            pi += 1.0 / (i as f64);
+        } else {
+            pi -= 1.0 / (i as f64);
+        }
 
         pos = !pos;
     }

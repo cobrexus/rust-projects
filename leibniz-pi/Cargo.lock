@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "compute-leibniz-pi"
+name = "leibniz-pi"
 version = "0.1.0"

@@ -1,8 +1,4 @@
-use std::time::Instant;
-
 fn main() {
-    let now = Instant::now();
-
     let mut pi = 0.0;
     let mut pos = true;
 
@@ -18,6 +14,5 @@ fn main() {
 
     pi *= 4.0;
 
-    let elapsed = now.elapsed();
-    println!("{} in {:.2?}", pi, elapsed);
+    println!("{}", pi);
 }

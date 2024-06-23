@@ -11,7 +11,7 @@ pub struct Config {
 impl Config {
     pub fn build(args: &[String]) -> Result<Config, &'static str> {
         if args.len() < 3 {
-            return Err("Invalid args. Usage: minigrep [query] [file]");
+            return Err("usage: minigrep [query] [file]");
         }
 
         let query = args[1].clone();

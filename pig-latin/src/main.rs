@@ -1,4 +1,5 @@
 use std::io;
+use std::io::Write;
 
 fn main() {
     let text = get_text();
@@ -9,34 +10,34 @@ fn main() {
 }
 
 fn get_text() -> String {
-    let mut input = String::new();
-    println!("Input words separated by spaces:");
-    io::stdin()
-        .read_line(&mut input)
-        .expect("Failed to read input");
+    let mut input = String::from("");
 
-    if input.trim().is_empty() {
-        panic!("No text was entered");
+    while input.trim().is_empty() {
+        print!("Input words separated by spaces: ");
+        let _ = io::stdout().flush();
+
+        io::stdin()
+            .read_line(&mut input)
+            .expect("Failed to read input");
     }
 
     input
 }
 
 fn pig_latin(word: &str) -> String {
-    match word.chars().next() {
-        Some('a' | 'e' | 'i' | 'o' | 'u') => {
-            let mut word_string = word.to_owned();
-            word_string.push_str("-hay");
-            word_string
+    match &word[0..1] {
+        "" => String::from(""),
+        "a" | "e" | "i" | "o" | "u" => {
+            let mut result = word.to_owned();
+            result.push_str("-hay");
+            result
         }
-        Some(consonant) => {
-            let word_vec = word.chars().collect::<Vec<_>>();
-            let mut pig_latin = word_vec[1..].iter().copied().collect::<String>();
-            pig_latin.push('-');
-            pig_latin.push(consonant);
-            pig_latin.push_str("ay");
-            pig_latin
+        x => {
+            let mut result = word[1..].to_string();
+            result.push('-');
+            result.push_str(x);
+            result.push_str("ay");
+            result
         }
-        None => String::from(""),
     }
 }

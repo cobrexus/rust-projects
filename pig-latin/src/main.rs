@@ -26,16 +26,15 @@ fn get_text() -> String {
 
 fn pig_latin(word: &str) -> String {
     match &word[0..1] {
-        "" => String::from(""),
         "a" | "e" | "i" | "o" | "u" => {
             let mut result = word.to_owned();
             result.push_str("-hay");
             result
         }
-        x => {
+        consonant => {
             let mut result = word[1..].to_string();
             result.push('-');
-            result.push_str(x);
+            result.push_str(consonant);
             result.push_str("ay");
             result
         }

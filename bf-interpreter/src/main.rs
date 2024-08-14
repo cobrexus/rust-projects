@@ -8,81 +8,97 @@ fn main() {
         panic!("not enough arguments were supplied");
     }
 
-    let program = &args[1];
-    let input = &args[2];
-    interpreter(program, input);
+    let program = args[1].clone();
+    let input = args[2].chars().collect::<Vec<_>>();
+    let mut interpreter = Interpreter::new(program, input);
+    interpreter.run();
 }
 
-fn interpreter(program: &str, input: &str) {
-    let mut mem = [0_u8; 30_000];
-    let mut ptr = 0;
+struct Interpreter {
+    mem: [u8; 30_000],
+    ptr: usize,
+    loop_stack: Vec<usize>,
+    program: String,
+    program_idx: usize,
+    input: Vec<char>,
+    input_idx: usize,
+}
 
-    let input = input.chars().collect::<Vec<_>>();
-
-    let mut program_idx = 0;
-    let mut input_idx = 0;
-    let mut loop_stack: Vec<usize> = vec![];
-
-    while program_idx < program.len() {
-        match &program[program_idx..program_idx + 1] {
-            ">" => {
-                if ptr == 29_999 {
-                    ptr = 0;
-                } else {
-                    ptr += 1;
-                }
-            }
-            "<" => {
-                if ptr == 0 {
-                    ptr = 29_999;
-                } else {
-                    ptr -= 1;
-                }
-            }
-            "+" => {
-                mem[ptr] = mem[ptr].wrapping_add(1);
-            }
-            "-" => {
-                mem[ptr] = mem[ptr].wrapping_sub(1);
-            }
-            "." => {
-                print!("{}", mem[ptr] as char);
-                let _ = io::stdout().flush();
-            }
-            "," => {
-                let input_char = input[input_idx];
-                mem[ptr] = input_char as u8;
-                input_idx += 1;
-            }
-            "[" => {
-                if mem[ptr] == 0 {
-                    let mut depth = 1;
-
-                    while depth > 0 {
-                        program_idx += 1;
-
-                        if &program[program_idx..program_idx + 1] == "[" {
-                            depth += 1;
-                        }
-
-                        if &program[program_idx..program_idx + 1] == "]" {
-                            depth -= 1;
-                        }
-                    }
-                } else {
-                    loop_stack.push(program_idx);
-                }
-            }
-            "]" => {
-                if mem[ptr] != 0 {
-                    program_idx = *loop_stack.last().unwrap();
-                } else {
-                    loop_stack.pop();
-                }
-            }
-            _ => (),
+impl Interpreter {
+    fn new(program: String, input: Vec<char>) -> Self {
+        Self {
+            mem: [0; 30_000],
+            ptr: 0,
+            loop_stack: vec![],
+            program,
+            program_idx: 0,
+            input,
+            input_idx: 0,
         }
+    }
 
-        program_idx += 1;
+    fn run(&mut self) {
+        while self.program_idx < self.program.len() {
+            match &self.program[self.program_idx..self.program_idx + 1] {
+                ">" => {
+                    if self.ptr == 29_999 {
+                        self.ptr = 0;
+                    } else {
+                        self.ptr += 1;
+                    }
+                }
+                "<" => {
+                    if self.ptr == 0 {
+                        self.ptr = 29_999;
+                    } else {
+                        self.ptr -= 1;
+                    }
+                }
+                "+" => {
+                    self.mem[self.ptr] = self.mem[self.ptr].wrapping_add(1);
+                }
+                "-" => {
+                    self.mem[self.ptr] = self.mem[self.ptr].wrapping_sub(1);
+                }
+                "." => {
+                    print!("{}", self.mem[self.ptr] as char);
+                    let _ = io::stdout().flush();
+                }
+                "," => {
+                    let input_char = self.input[self.input_idx];
+                    self.mem[self.ptr] = input_char as u8;
+                    self.input_idx += 1;
+                }
+                "[" => {
+                    if self.mem[self.ptr] == 0 {
+                        let mut depth = 1;
+
+                        while depth > 0 {
+                            self.program_idx += 1;
+
+                            if &self.program[self.program_idx..self.program_idx + 1] == "[" {
+                                depth += 1;
+                            }
+
+                            if &self.program[self.program_idx..self.program_idx + 1] == "]" {
+                                depth -= 1;
+                            }
+                        }
+                    } else {
+                        self.loop_stack.push(self.program_idx);
+                    }
+                }
+                "]" => {
+                    if self.mem[self.ptr] != 0 {
+                        self.program_idx = *self.loop_stack.last().unwrap();
+                    } else {
+                        self.loop_stack.pop();
+                    }
+                }
+                _ => (),
+            }
+
+            self.program_idx += 1;
+        }
     }
 }

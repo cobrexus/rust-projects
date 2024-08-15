@@ -21,39 +21,23 @@ fn loop_eraser(input: &str) -> String {
     let mut j = i + 1;
 
     'outer: while i < input.len() {
-        dbg!(i);
-
         while j < input.len() {
-            dbg!(j);
-
             if input[j] == input[i] {
-                dbg!(input[i]);
-
                 for k in i..j {
                     input[k] = None;
-                    dbg!(k, &input);
                 }
 
                 i = j;
                 j = i + 1;
-
-                dbg!(i, j);
-
                 continue 'outer;
             }
 
             j += 1;
-            dbg!(i);
         }
 
         i += 1;
         j = i + 1;
-        dbg!(j);
     }
 
-    input
-        .iter()
-        .filter(|x| x.is_some())
-        .map(|x| x.unwrap())
-        .collect::<String>()
+    input.iter().flatten().collect::<String>()
 }

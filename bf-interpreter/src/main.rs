@@ -1,8 +1,8 @@
-use std::io;
 use std::io::Write;
+use std::{env, io};
 
 fn main() {
-    let args = std::env::args().collect::<Vec<_>>();
+    let args = env::args().collect::<Vec<_>>();
 
     if args.len() < 3 {
         panic!("not enough arguments were supplied");

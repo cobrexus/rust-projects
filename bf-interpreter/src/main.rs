@@ -11,7 +11,11 @@ fn main() {
     let program = args[1].clone();
     let input = args[2].chars().collect::<Vec<_>>();
     let mut interpreter = Interpreter::new(program, input);
-    interpreter.run();
+    let output = interpreter.run();
+    for c in output {
+        print!("{}", c);
+        let _ = io::stdout().flush();
+    }
 }
 
 struct Interpreter {
@@ -37,7 +41,9 @@ impl Interpreter {
         }
     }
 
-    fn run(&mut self) {
+    fn run(&mut self) -> Vec<char> {
+        let mut output: Vec<char> = vec![];
+
         while self.program_idx < self.program.len() {
             match &self.program[self.program_idx..self.program_idx + 1] {
                 ">" => {
@@ -61,8 +67,7 @@ impl Interpreter {
                     self.mem[self.ptr] = self.mem[self.ptr].wrapping_sub(1);
                 }
                 "." => {
-                    print!("{}", self.mem[self.ptr] as char);
-                    let _ = io::stdout().flush();
+                    output.push(self.mem[self.ptr] as char);
                 }
                 "," => {
                     let input_char = self.input[self.input_idx];
@@ -100,5 +105,7 @@ impl Interpreter {
 
             self.program_idx += 1;
         }
+
+        output
     }
 }

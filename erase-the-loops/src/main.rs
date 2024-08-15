@@ -1,4 +1,4 @@
-// Solution to https://codegolf.stackexchange.com/q/274973/94032
+// Context: https://codegolf.stackexchange.com/q/274973/94032
 
 use std::env;
 

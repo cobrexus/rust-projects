@@ -50,16 +50,10 @@ impl Solution {
                 }
             }
             Err(_) => {
-                let mut is_valid_int = true;
-                for c in s {
-                    if !nums_chars.contains(&c) {
-                        is_valid_int = false;
-                    }
-                }
-                if is_valid_int {
-                    return i32::MAX;
-                } else {
+                if s.iter().any(|&c| !nums_chars.contains(&c)) {
                     return 0;
+                } else {
+                    return i32::MAX;
                 }
             }
         }

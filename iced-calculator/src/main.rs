@@ -7,8 +7,9 @@ fn main() -> iced::Result {
 }
 
 struct Calculator {
-    answer: i32,
-    current_op: Option<Op>,
+    answer: i128,
+    temp: i128,
+    op: Option<Op>,
 }
 
 #[derive(Debug, Clone)]
@@ -33,7 +34,8 @@ impl Sandbox for Calculator {
     fn new() -> Self {
         Self {
             answer: 0,
-            current_op: None,
+            temp: 0,
+            op: None,
         }
     }
 
@@ -43,35 +45,65 @@ impl Sandbox for Calculator {
 
     fn update(&mut self, message: Self::Message) {
         match message {
-            Message::OpBtnPressed(op) => {
-                self.current_op = Some(op);
+            Message::NumBtnPressed(n) => {
+                self.temp = format!("{}{}", self.temp, n)
+                    .parse::<i128>()
+                    .unwrap_or(i128::MAX);
             }
-            Message::NumBtnPressed(n) => match &self.current_op {
-                None => self.answer = format!("{}{}", self.answer, n).parse::<i32>().unwrap(),
-                Some(op) => match op {
+            Message::OpBtnPressed(Op::Add) => {
+                if self.answer == 0 {
+                    self.answer = self.temp;
+                    self.temp = 0;
+                }
+                self.op = Some(Op::Add);
+            }
+            Message::OpBtnPressed(Op::Sub) => {
+                if self.answer == 0 {
+                    self.answer = self.temp;
+                    self.temp = 0;
+                }
+                self.op = Some(Op::Sub);
+            }
+            Message::OpBtnPressed(Op::Mul) => {
+                if self.answer == 0 {
+                    self.answer = self.temp;
+                    self.temp = 0;
+                }
+                self.op = Some(Op::Mul);
+            }
+            Message::OpBtnPressed(Op::Div) => {
+                if self.answer == 0 {
+                    self.answer = self.temp;
+                    self.temp = 0;
+                }
+                self.op = Some(Op::Div);
+            }
+            Message::OpBtnPressed(Op::Clear) => {
+                self.answer = 0;
+                self.temp = 0;
+            }
+            Message::OpBtnPressed(Op::Equal) if self.op.is_some() => {
+                match self.op.as_ref().unwrap() {
                     Op::Add => {
-                        self.answer += n as i32;
-                        self.current_op = None;
+                        self.answer += self.temp;
+                        self.temp = 0;
                     }
                     Op::Sub => {
-                        self.answer -= n as i32;
-                        self.current_op = None;
+                        self.answer -= self.temp;
+                        self.temp = 0;
                     }
                     Op::Mul => {
-                        self.answer *= n as i32;
-                        self.current_op = None;
+                        self.answer *= self.temp;
+                        self.temp = 0;
                     }
                     Op::Div => {
-                        self.answer /= n as i32;
-                        self.current_op = None;
+                        self.answer *= self.temp;
+                        self.temp = 0;
                     }
-                    Op::Clear => {
-                        self.answer = 0;
-                        self.current_op = None;
-                    }
-                    Op::Equal => todo!(),
-                },
-            },
+                    _ => (),
+                }
+            }
+            Message::OpBtnPressed(Op::Equal) => (), // no operation selected
         }
     }
 
@@ -87,13 +119,6 @@ impl Sandbox for Calculator {
             .style(style)
             .on_press(on_press)
             .into()
-        }
-
-        fn answer<'a>(res: i32) -> Element<'a, Message> {
-            container(text(res))
-                .style(theme::Container::Box)
-                .padding(5)
-                .into()
         }
 
         row![
@@ -154,7 +179,7 @@ impl Sandbox for Calculator {
                 .spacing(5),
             ]
             .spacing(5),
-            answer(self.answer)
+            column![text(self.answer).size(20), text(self.temp),].padding(10),
         ]
         .into()
     }

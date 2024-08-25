@@ -107,8 +107,8 @@ impl Sandbox for Calculator {
         }
     }
 
-    fn view(&self) -> Element<'_, Self::Message> {
-        fn btn<'a>(txt: &'a str, on_press: Message, style: theme::Button) -> Element<'a, Message> {
+    fn view(&self) -> Element<Message> {
+        fn btn(txt: &str, on_press: Message, style: theme::Button) -> Element<Message> {
             button(
                 container(text(txt))
                     .width(30)

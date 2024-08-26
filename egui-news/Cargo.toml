@@ -5,4 +5,3 @@ edition = "2021"
 
 [dependencies]
 eframe = "0.14.0"
-newsapi = "0.6.0"

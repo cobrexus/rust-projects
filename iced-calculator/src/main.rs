@@ -1,5 +1,6 @@
 use iced::theme;
 use iced::widget::{button, column, container, row, text};
+use iced::Length;
 use iced::{Element, Sandbox, Settings};
 
 fn main() -> iced::Result {
@@ -108,7 +109,7 @@ impl Sandbox for Calculator {
     }
 
     fn view(&self) -> Element<Message> {
-        fn btn(txt: &str, on_press: Message, style: theme::Button) -> Element<Message> {
+        fn btn<'a>(txt: String, on_press: Message, style: theme::Button) -> Element<'a, Message> {
             button(
                 container(text(txt))
                     .width(30)
@@ -121,8 +122,17 @@ impl Sandbox for Calculator {
             .into()
         }
 
-        row![
-            column![
+        fn num_btn_row<'a>(n: u8) -> Element<'a, Message> {
+            btn(
+                n.to_string(),
+                Message::NumBtnPressed(n),
+                theme::Button::Primary,
+            )
+        }
+
+        container(column![
+            column![text(self.answer).size(20), text(self.temp),].padding(10),
+            row![column![
                 row![
                     btn("7", Message::NumBtnPressed(7), theme::Button::Primary),
                     btn("8", Message::NumBtnPressed(8), theme::Button::Primary),
@@ -178,9 +188,12 @@ impl Sandbox for Calculator {
                 ]
                 .spacing(5),
             ]
-            .spacing(5),
-            column![text(self.answer).size(20), text(self.temp),].padding(10),
-        ]
+            .spacing(5)]
+        ])
+        .width(Length::Fill)
+        .center_x()
+        .height(Length::Fill)
+        .center_y()
         .into()
     }
 }

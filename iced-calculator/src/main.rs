@@ -109,82 +109,49 @@ impl Sandbox for Calculator {
     }
 
     fn view(&self) -> Element<Message> {
-        fn btn<'a>(txt: String, on_press: Message, style: theme::Button) -> Element<'a, Message> {
-            button(
-                container(text(txt))
-                    .width(30)
-                    .height(30)
-                    .center_x()
-                    .center_y(),
-            )
-            .style(style)
-            .on_press(on_press)
-            .into()
-        }
-
-        fn num_btn_row<'a>(n: u8) -> Element<'a, Message> {
-            btn(
-                n.to_string(),
-                Message::NumBtnPressed(n),
-                theme::Button::Primary,
-            )
+        fn btn(contents: &str, op: Option<Op>) -> Element<Message> {
+            match contents.parse::<u8>() {
+                Ok(n) => button(
+                    container(text(n))
+                        .width(30)
+                        .height(30)
+                        .center_x()
+                        .center_y(),
+                )
+                .style(theme::Button::Primary)
+                .on_press(Message::NumBtnPressed(n))
+                .into(),
+                Err(_) => button(
+                    container(text(contents))
+                        .width(30)
+                        .height(30)
+                        .center_x()
+                        .center_y(),
+                )
+                .style(theme::Button::Secondary)
+                .on_press(Message::OpBtnPressed(
+                    op.expect("op btn should have op set"),
+                ))
+                .into(),
+            }
         }
 
         container(column![
             column![text(self.answer).size(20), text(self.temp),].padding(10),
             row![column![
+                row![btn("7", None), btn("8", None), btn("9", None),].spacing(5),
+                row![btn("4", None), btn("5", None), btn("6", None),].spacing(5),
+                row![btn("1", None), btn("2", None), btn("3", None),].spacing(5),
                 row![
-                    btn("7", Message::NumBtnPressed(7), theme::Button::Primary),
-                    btn("8", Message::NumBtnPressed(8), theme::Button::Primary),
-                    btn("9", Message::NumBtnPressed(9), theme::Button::Primary),
+                    btn("+", Some(Op::Add),),
+                    btn("-", Some(Op::Sub),),
+                    btn("C", Some(Op::Clear),),
                 ]
                 .spacing(5),
                 row![
-                    btn("4", Message::NumBtnPressed(4), theme::Button::Primary),
-                    btn("5", Message::NumBtnPressed(5), theme::Button::Primary),
-                    btn("6", Message::NumBtnPressed(6), theme::Button::Primary),
-                ]
-                .spacing(5),
-                row![
-                    btn("1", Message::NumBtnPressed(1), theme::Button::Primary),
-                    btn("2", Message::NumBtnPressed(2), theme::Button::Primary),
-                    btn("3", Message::NumBtnPressed(3), theme::Button::Primary),
-                ]
-                .spacing(5),
-                row![
-                    btn(
-                        "+",
-                        Message::OpBtnPressed(Op::Add),
-                        theme::Button::Secondary
-                    ),
-                    btn(
-                        "-",
-                        Message::OpBtnPressed(Op::Sub),
-                        theme::Button::Secondary
-                    ),
-                    btn(
-                        "C",
-                        Message::OpBtnPressed(Op::Clear),
-                        theme::Button::Secondary
-                    ),
-                ]
-                .spacing(5),
-                row![
-                    btn(
-                        "×",
-                        Message::OpBtnPressed(Op::Mul),
-                        theme::Button::Secondary
-                    ),
-                    btn(
-                        "÷",
-                        Message::OpBtnPressed(Op::Div),
-                        theme::Button::Secondary
-                    ),
-                    btn(
-                        "=",
-                        Message::OpBtnPressed(Op::Equal),
-                        theme::Button::Secondary
-                    ),
+                    btn("×", Some(Op::Mul),),
+                    btn("÷", Some(Op::Div),),
+                    btn("=", Some(Op::Equal),),
                 ]
                 .spacing(5),
             ]

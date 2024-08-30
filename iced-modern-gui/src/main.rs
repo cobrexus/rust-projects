@@ -9,24 +9,16 @@ use iced::{
 };
 
 fn main() -> iced::Result {
-    RustUI::run(Settings::default())
+    IcedModernGUI::run(Settings::default())
 }
 
-struct RustUI {
+struct IcedModernGUI {
     theme: Theme,
-    page: Page,
+    route: Route,
     login_fields: LoginFields,
-}
-
-struct LoginFields {
-    email: String,
-    password: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum Page {
-    Login,
-    Register,
+    saved_username: String,
+    saved_password: String,
+    account_state: AccountState,
 }
 
 #[derive(Debug, Clone)]
@@ -37,30 +29,45 @@ enum Message {
     LoginFieldsChanged(String, String),
 }
 
+struct LoginFields {
+    username: String,
+    password: String,
+}
+
+enum AccountState {
+    LoggedOut,
+    LoggedIn,
+    BadCredentials,
+    AccountCreated,
+}
+
 #[derive(Debug, Clone)]
 enum Route {
     Login,
     Register,
 }
 
-impl Sandbox for RustUI {
+impl Sandbox for IcedModernGUI {
     type Message = Message;
 
     fn new() -> Self {
         Self {
             theme: Theme::Dark,
-            page: Page::Login,
+            route: Route::Login,
             login_fields: LoginFields {
-                email: String::new(),
+                username: String::new(),
                 password: String::new(),
             },
+            saved_username: String::new(),
+            saved_password: String::new(),
+            account_state: AccountState::LoggedOut,
         }
     }
 
     fn title(&self) -> String {
-        match self.page {
-            Page::Login => String::from("Login - Iced Modern GUI"),
-            Page::Register => String::from("Register - Iced Modern GUI"),
+        match self.route {
+            Route::Login => String::from("Login - Iced Modern GUI"),
+            Route::Register => String::from("Register - Iced Modern GUI"),
         }
     }
 
@@ -77,37 +84,71 @@ impl Sandbox for RustUI {
                     Theme::Light
                 }
             }
-            Message::LoginFieldsChanged(email, password) => {
-                self.login_fields.email = email;
+            Message::LoginFieldsChanged(username, password) => {
+                self.login_fields.username = username;
                 self.login_fields.password = password;
             }
-            Message::LoginSubmit => (),
-            Message::Router(route) => match route {
-                Route::Login => {
-                    self.page = Page::Login;
-                }
+            Message::LoginSubmit => match self.route {
                 Route::Register => {
-                    self.page = Page::Register;
+                    self.saved_username = self.login_fields.username.clone();
+                    self.saved_password = self.login_fields.password.clone();
+                    self.account_state = AccountState::AccountCreated;
+                }
+                Route::Login => {
+                    if self.saved_username == self.login_fields.username
+                        && self.saved_password == self.login_fields.password
+                    {
+                        self.account_state = AccountState::LoggedIn;
+                    } else {
+                        self.account_state = AccountState::BadCredentials;
+                    }
                 }
             },
+            Message::Router(route) => {
+                self.login_fields.username = String::new();
+                self.login_fields.password = String::new();
+
+                match route {
+                    Route::Login => {
+                        self.route = Route::Login;
+                    }
+                    Route::Register => {
+                        self.route = Route::Register;
+                    }
+                }
+            }
         }
     }
 
     fn view(&self) -> Element<Message> {
-        let content = match self.page {
-            Page::Login => login_page(&self.login_fields),
-            Page::Register => register_page(&self.login_fields),
+        let content = match self.route {
+            Route::Login => login_page(&self.login_fields),
+            Route::Register => register_page(&self.login_fields),
         };
 
         let wrapper = column![
+            match self.account_state {
+                AccountState::LoggedOut => {
+                    text("")
+                }
+                AccountState::LoggedIn => {
+                    text("Logged in")
+                }
+                AccountState::BadCredentials => {
+                    text("Bad credentials")
+                }
+                AccountState::AccountCreated => {
+                    text("Account created")
+                }
+            },
             content,
-            match self.page {
-                Page::Login => footer(
+            match self.route {
+                Route::Login => footer(
                     button("Register")
                         .on_press(Message::Router(Route::Register))
                         .style(theme::Button::Custom(Box::new(ButtonStyle::FooterButton))),
                 ),
-                Page::Register => footer(
+                Route::Register => footer(
                     button("Login")
                         .on_press(Message::Router(Route::Login))
                         .style(theme::Button::Custom(Box::new(ButtonStyle::FooterButton))),
@@ -146,10 +187,11 @@ fn footer(route_btn: Button<Message>) -> Container<Message> {
 fn login_page(login_fields: &LoginFields) -> Container<Message> {
     let column = column![
         text("Login").size(30),
-        input_field("Email Address", &login_fields.email)
-            .on_input(|email| Message::LoginFieldsChanged(email, login_fields.password.clone())),
+        input_field("Username", &login_fields.username).on_input(|username| {
+            Message::LoginFieldsChanged(username, login_fields.password.clone())
+        }),
         input_field("Password", &login_fields.password).on_input(|password| {
-            Message::LoginFieldsChanged(login_fields.email.clone(), password)
+            Message::LoginFieldsChanged(login_fields.username.clone(), password)
         }),
         submit_btn("Login", Message::LoginSubmit),
     ]
@@ -166,10 +208,11 @@ fn login_page(login_fields: &LoginFields) -> Container<Message> {
 fn register_page(login_fields: &LoginFields) -> Container<Message> {
     let column = column![
         text("Register").size(30),
-        input_field("Email Address", &login_fields.email)
-            .on_input(|email| Message::LoginFieldsChanged(email, login_fields.password.clone())),
+        input_field("Username", &login_fields.username).on_input(|username| {
+            Message::LoginFieldsChanged(username, login_fields.password.clone())
+        }),
         input_field("Password", &login_fields.password).on_input(|password| {
-            Message::LoginFieldsChanged(login_fields.email.clone(), password)
+            Message::LoginFieldsChanged(login_fields.username.clone(), password)
         }),
         submit_btn("Register", Message::LoginSubmit),
     ]

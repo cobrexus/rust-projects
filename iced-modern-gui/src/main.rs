@@ -58,7 +58,10 @@ impl Sandbox for RustUI {
     }
 
     fn title(&self) -> String {
-        String::from("Iced Modern GUI")
+        match self.page {
+            Page::Login => String::from("Login - Iced Modern GUI"),
+            Page::Register => String::from("Register - Iced Modern GUI"),
+        }
     }
 
     fn theme(&self) -> Theme {

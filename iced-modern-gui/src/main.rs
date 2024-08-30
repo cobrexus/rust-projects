@@ -15,7 +15,7 @@ fn main() -> iced::Result {
 struct RustUI {
     theme: Theme,
     page: Page,
-    login_field: LoginFields,
+    login_fields: LoginFields,
 }
 
 struct LoginFields {
@@ -50,7 +50,7 @@ impl Sandbox for RustUI {
         Self {
             theme: Theme::Dark,
             page: Page::Login,
-            login_field: LoginFields {
+            login_fields: LoginFields {
                 email: String::new(),
                 password: String::new(),
             },
@@ -78,8 +78,8 @@ impl Sandbox for RustUI {
                 }
             }
             Message::LoginFieldsChanged(email, password) => {
-                self.login_field.email = email;
-                self.login_field.password = password;
+                self.login_fields.email = email;
+                self.login_fields.password = password;
             }
             Message::LoginSubmit => (),
             Message::Router(route) => match route {
@@ -95,8 +95,8 @@ impl Sandbox for RustUI {
 
     fn view(&self) -> Element<Message> {
         let content = match self.page {
-            Page::Login => login_page(&self.login_field),
-            Page::Register => register_page(&self.login_field),
+            Page::Login => login_page(&self.login_fields),
+            Page::Register => register_page(&self.login_fields),
         };
 
         let wrapper = column![
@@ -143,13 +143,13 @@ fn footer(route_btn: Button<Message>) -> Container<Message> {
     container(footer).center_x().center_y()
 }
 
-fn login_page(login_field: &LoginFields) -> Container<Message> {
+fn login_page(login_fields: &LoginFields) -> Container<Message> {
     let column = column![
         text("Login").size(30),
-        input_field("Email Address", &login_field.email)
-            .on_input(|email| Message::LoginFieldsChanged(email, login_field.password.clone())),
-        input_field("Password", &login_field.password).on_input(|password| {
-            Message::LoginFieldsChanged(login_field.email.clone(), password)
+        input_field("Email Address", &login_fields.email)
+            .on_input(|email| Message::LoginFieldsChanged(email, login_fields.password.clone())),
+        input_field("Password", &login_fields.password).on_input(|password| {
+            Message::LoginFieldsChanged(login_fields.email.clone(), password)
         }),
         submit_btn("Login", Message::LoginSubmit),
     ]
@@ -163,13 +163,13 @@ fn login_page(login_field: &LoginFields) -> Container<Message> {
         .into()
 }
 
-fn register_page(login_field: &LoginFields) -> Container<Message> {
+fn register_page(login_fields: &LoginFields) -> Container<Message> {
     let column = column![
         text("Register").size(30),
-        input_field("Email Address", &login_field.email)
-            .on_input(|email| Message::LoginFieldsChanged(email, login_field.password.clone())),
-        input_field("Password", &login_field.password).on_input(|password| {
-            Message::LoginFieldsChanged(login_field.email.clone(), password)
+        input_field("Email Address", &login_fields.email)
+            .on_input(|email| Message::LoginFieldsChanged(email, login_fields.password.clone())),
+        input_field("Password", &login_fields.password).on_input(|password| {
+            Message::LoginFieldsChanged(login_fields.email.clone(), password)
         }),
         submit_btn("Register", Message::LoginSubmit),
     ]

@@ -41,10 +41,6 @@ impl Application for Wordstats {
         String::from("Wordstats")
     }
 
-    fn theme(&self) -> Theme {
-        Theme::Dark
-    }
-
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Edit(action) => {

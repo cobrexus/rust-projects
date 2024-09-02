@@ -1,8 +1,8 @@
 use iced::{
     executor,
     widget::{
-        button, column, container, pick_list, row, scrollable, scrollable::Direction, text,
-        text_editor, text_input,
+        button, container, pick_list, scrollable, scrollable::Direction, text, text_editor,
+        text_input, Column, Row,
     },
     Application, Color, Command, Element, Length, Settings, Theme,
 };
@@ -122,47 +122,53 @@ impl Application for HttpLens {
 
     fn view(&self) -> Element<Self::Message> {
         container(
-            column![
-                row![
-                    pick_list(
-                        ALL_HTTP_METHODS,
-                        Some(self.selected_http_method.clone()),
-                        Message::HttpMethodSelected,
-                    )
-                    .padding(7),
-                    text_input("Enter URL", &self.url_entered)
-                        .on_input(Message::UrlInputChanged)
-                        .on_submit(Message::UrlSubmitted)
-                        .padding(7),
-                    button(if self.loading {
-                        "Loading..."
-                    } else {
-                        "Send Request"
-                    })
-                    .padding(7)
-                    .on_press(Message::UrlSubmitted)
-                ]
-                .spacing(10),
-                container(
-                    text_editor(&self.request_body)
-                        .on_action(Message::RequestBodyEdited)
-                        .padding(7),
+            Column::new()
+                .push(
+                    Row::new()
+                        .push(
+                            pick_list(
+                                ALL_HTTP_METHODS,
+                                Some(self.selected_http_method.clone()),
+                                Message::HttpMethodSelected,
+                            )
+                            .padding(7),
+                        )
+                        .push(
+                            text_input("Enter URL", &self.url_entered)
+                                .on_input(Message::UrlInputChanged)
+                                .on_submit(Message::UrlSubmitted)
+                                .padding(7),
+                        )
+                        .push(
+                            button(if self.loading {
+                                "Loading..."
+                            } else {
+                                "Send Request"
+                            })
+                            .padding(7)
+                            .on_press(Message::UrlSubmitted),
+                        )
+                        .spacing(10),
                 )
-                .padding([10, 0]),
-                container(if self.error {
+                .push(
                     container(
-                        text("Whoops, something went wrong").style(Color::from_rgb(1.0, 0.5, 0.5)),
+                        text_editor(&self.request_body)
+                            .on_action(Message::RequestBodyEdited)
+                            .padding(7),
                     )
+                    .padding([10, 0]),
+                )
+                .push_maybe(if self.error {
+                    Some(text("Whoops, something went wrong").style(Color::from_rgb(1.0, 0.5, 0.5)))
                 } else {
-                    container("")
-                }),
-                scrollable(text(&self.response)).direction(Direction::Both {
-                    vertical: Default::default(),
-                    horizontal: Default::default()
+                    None
                 })
-            ]
-            .width(1000)
-            .padding(20),
+                .push(scrollable(text(&self.response)).direction(Direction::Both {
+                    vertical: Default::default(),
+                    horizontal: Default::default(),
+                }))
+                .width(1000)
+                .padding(20),
         )
         .center_x()
         .width(Length::Fill)

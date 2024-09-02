@@ -18,7 +18,8 @@ struct HttpLens {
     url_entered: String,
     request_body: text_editor::Content,
     loading: bool,
-    response: String,
+    response_headers: String,
+    response_body: String,
     error: bool,
 }
 
@@ -47,7 +48,7 @@ enum Message {
     UrlInputChanged(String),
     RequestBodyEdited(text_editor::Action),
     UrlSubmitted,
-    RequestSent(Option<String>),
+    RequestSent(Option<(ResponseHeaders, ResponseBody)>),
 }
 
 impl Application for HttpLens {
@@ -63,7 +64,8 @@ impl Application for HttpLens {
                 url_entered: String::new(),
                 request_body: text_editor::Content::new(),
                 loading: false,
-                response: String::new(),
+                response_headers: String::new(),
+                response_body: String::new(),
                 error: false,
             },
             Command::none(),
@@ -108,11 +110,13 @@ impl Application for HttpLens {
                 match result {
                     Some(response) => {
                         self.error = false;
-                        self.response = response;
+                        self.response_headers = response.0 .0;
+                        self.response_body = response.1 .0;
                     }
                     None => {
                         self.error = true;
-                        self.response = String::new();
+                        self.response_headers = String::new();
+                        self.response_body = String::new();
                     }
                 }
                 Command::none()
@@ -126,69 +130,102 @@ impl Application for HttpLens {
             Some(self.selected_http_method.clone()),
             Message::HttpMethodSelected,
         )
-        .padding(7);
+        .padding(10);
 
         let url_input = text_input("Enter URL", &self.url_entered)
             .on_input(Message::UrlInputChanged)
             .on_submit(Message::UrlSubmitted)
-            .padding(7);
+            .padding(10);
 
-        let submit_btn = button(if self.loading {
-            "Loading..."
+        let submit_btn: Element<Message> = if self.loading {
+            button("Loading...").padding(10).on_press_maybe(None).into()
         } else {
-            "Send Request"
-        })
-        .padding(7)
-        .on_press(Message::UrlSubmitted);
+            button("Send Request")
+                .padding(10)
+                .on_press(Message::UrlSubmitted)
+                .into()
+        };
 
-        let request_body = container(
-            text_editor(&self.request_body)
-                .on_action(Message::RequestBodyEdited)
-                .padding(7),
-        )
-        .padding([10, 0]);
+        let request_body = Column::new()
+            .push(container("Request body").padding([10, 0]))
+            .push(text_editor(&self.request_body).on_action(Message::RequestBodyEdited))
+            .padding([10, 0]);
 
         let error_msg = if self.error {
-            Some(text("Whoops, something went wrong").style(Color::from_rgb(1.0, 0.5, 0.5)))
+            Some(container(
+                text("Whoops, something went wrong").style(Color::from_rgb(1.0, 0.5, 0.5)),
+            ))
         } else {
             None
         };
 
         let scrollable_response_text =
-            scrollable(text(&self.response)).direction(Direction::Both {
-                vertical: Default::default(),
-                horizontal: Default::default(),
-            });
-
-        container(
-            Column::new()
-                .push(
-                    Row::new()
-                        .push(http_method_dropdown)
-                        .push(url_input)
-                        .push(submit_btn)
-                        .spacing(10),
+            if !self.response_headers.is_empty() || !self.response_body.is_empty() {
+                Some(
+                    Column::new()
+                        .push(container(text("Response Headers").size(25)).padding([10, 0]))
+                        .push(
+                            scrollable(text(&self.response_headers))
+                                .direction(Direction::Horizontal(Default::default())),
+                        )
+                        .push(container(text("Response Body").size(25)).padding([10, 0]))
+                        .push(
+                            scrollable(text(&self.response_body))
+                                .direction(Direction::Horizontal(Default::default())),
+                        ),
                 )
-                .push(request_body)
-                .push_maybe(error_msg)
-                .push(scrollable_response_text)
-                .width(1000)
-                .padding(20),
+            } else {
+                None
+            };
+
+        scrollable(
+            container(
+                Column::new()
+                    .push(
+                        Row::new()
+                            .push(http_method_dropdown)
+                            .push(url_input)
+                            .push(submit_btn)
+                            .spacing(10),
+                    )
+                    .push(request_body)
+                    .push_maybe(error_msg)
+                    .push_maybe(scrollable_response_text)
+                    .width(1000)
+                    .padding(20),
+            )
+            .center_x()
+            .width(Length::Fill),
         )
-        .center_x()
-        .width(Length::Fill)
-        .height(Length::Fill)
         .into()
     }
 }
 
-async fn send_request(method: HttpMethod, url: String, body: String) -> Option<String> {
+#[derive(Debug, Clone)]
+struct ResponseBody(String);
+
+#[derive(Debug, Clone)]
+struct ResponseHeaders(String);
+
+async fn send_request(
+    method: HttpMethod,
+    url: String,
+    body: String,
+) -> Option<(ResponseHeaders, ResponseBody)> {
     match method {
         HttpMethod::Get => {
             let client = reqwest::Client::new();
             if let Ok(response) = client.get(url).body(body).send().await {
-                if let Ok(text) = response.text().await {
-                    Some(text)
+                let headers = response
+                    .headers()
+                    .iter()
+                    .map(|header| {
+                        format!("{}: {}\n", header.0.as_str(), header.1.to_str().unwrap())
+                    })
+                    .collect::<String>();
+
+                if let Ok(body) = response.text().await {
+                    Some((ResponseHeaders(headers), ResponseBody(body)))
                 } else {
                     None
                 }
@@ -199,8 +236,14 @@ async fn send_request(method: HttpMethod, url: String, body: String) -> Option<S
         HttpMethod::Post => {
             let client = reqwest::Client::new();
             if let Ok(response) = client.post(url).body(body).send().await {
-                if let Ok(text) = response.text().await {
-                    Some(text)
+                let headers = response
+                    .headers()
+                    .iter()
+                    .map(|header| format!("{}: {}", header.0.as_str(), header.1.to_str().unwrap()))
+                    .collect::<String>();
+
+                if let Ok(body) = response.text().await {
+                    Some((ResponseHeaders(headers), ResponseBody(body)))
                 } else {
                     None
                 }
@@ -211,8 +254,14 @@ async fn send_request(method: HttpMethod, url: String, body: String) -> Option<S
         HttpMethod::Put => {
             let client = reqwest::Client::new();
             if let Ok(response) = client.put(url).body(body).send().await {
-                if let Ok(text) = response.text().await {
-                    Some(text)
+                let headers = response
+                    .headers()
+                    .iter()
+                    .map(|header| format!("{}: {}", header.0.as_str(), header.1.to_str().unwrap()))
+                    .collect::<String>();
+
+                if let Ok(body) = response.text().await {
+                    Some((ResponseHeaders(headers), ResponseBody(body)))
                 } else {
                     None
                 }
@@ -223,8 +272,14 @@ async fn send_request(method: HttpMethod, url: String, body: String) -> Option<S
         HttpMethod::Delete => {
             let client = reqwest::Client::new();
             if let Ok(response) = client.delete(url).body(body).send().await {
-                if let Ok(text) = response.text().await {
-                    Some(text)
+                let headers = response
+                    .headers()
+                    .iter()
+                    .map(|header| format!("{}: {}", header.0.as_str(), header.1.to_str().unwrap()))
+                    .collect::<String>();
+
+                if let Ok(body) = response.text().await {
+                    Some((ResponseHeaders(headers), ResponseBody(body)))
                 } else {
                     None
                 }
@@ -235,8 +290,14 @@ async fn send_request(method: HttpMethod, url: String, body: String) -> Option<S
         HttpMethod::Head => {
             let client = reqwest::Client::new();
             if let Ok(response) = client.head(url).body(body).send().await {
-                if let Ok(text) = response.text().await {
-                    Some(text)
+                let headers = response
+                    .headers()
+                    .iter()
+                    .map(|header| format!("{}: {}", header.0.as_str(), header.1.to_str().unwrap()))
+                    .collect::<String>();
+
+                if let Ok(body) = response.text().await {
+                    Some((ResponseHeaders(headers), ResponseBody(body)))
                 } else {
                     None
                 }
@@ -247,8 +308,14 @@ async fn send_request(method: HttpMethod, url: String, body: String) -> Option<S
         HttpMethod::Patch => {
             let client = reqwest::Client::new();
             if let Ok(response) = client.patch(url).body(body).send().await {
-                if let Ok(text) = response.text().await {
-                    Some(text)
+                let headers = response
+                    .headers()
+                    .iter()
+                    .map(|header| format!("{}: {}", header.0.as_str(), header.1.to_str().unwrap()))
+                    .collect::<String>();
+
+                if let Ok(body) = response.text().await {
+                    Some((ResponseHeaders(headers), ResponseBody(body)))
                 } else {
                     None
                 }

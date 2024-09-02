@@ -121,52 +121,57 @@ impl Application for HttpLens {
     }
 
     fn view(&self) -> Element<Self::Message> {
+        let http_method_dropdown = pick_list(
+            ALL_HTTP_METHODS,
+            Some(self.selected_http_method.clone()),
+            Message::HttpMethodSelected,
+        )
+        .padding(7);
+
+        let url_input = text_input("Enter URL", &self.url_entered)
+            .on_input(Message::UrlInputChanged)
+            .on_submit(Message::UrlSubmitted)
+            .padding(7);
+
+        let submit_btn = button(if self.loading {
+            "Loading..."
+        } else {
+            "Send Request"
+        })
+        .padding(7)
+        .on_press(Message::UrlSubmitted);
+
+        let request_body = container(
+            text_editor(&self.request_body)
+                .on_action(Message::RequestBodyEdited)
+                .padding(7),
+        )
+        .padding([10, 0]);
+
+        let error_msg = if self.error {
+            Some(text("Whoops, something went wrong").style(Color::from_rgb(1.0, 0.5, 0.5)))
+        } else {
+            None
+        };
+
+        let scrollable_response_text =
+            scrollable(text(&self.response)).direction(Direction::Both {
+                vertical: Default::default(),
+                horizontal: Default::default(),
+            });
+
         container(
             Column::new()
                 .push(
                     Row::new()
-                        .push(
-                            pick_list(
-                                ALL_HTTP_METHODS,
-                                Some(self.selected_http_method.clone()),
-                                Message::HttpMethodSelected,
-                            )
-                            .padding(7),
-                        )
-                        .push(
-                            text_input("Enter URL", &self.url_entered)
-                                .on_input(Message::UrlInputChanged)
-                                .on_submit(Message::UrlSubmitted)
-                                .padding(7),
-                        )
-                        .push(
-                            button(if self.loading {
-                                "Loading..."
-                            } else {
-                                "Send Request"
-                            })
-                            .padding(7)
-                            .on_press(Message::UrlSubmitted),
-                        )
+                        .push(http_method_dropdown)
+                        .push(url_input)
+                        .push(submit_btn)
                         .spacing(10),
                 )
-                .push(
-                    container(
-                        text_editor(&self.request_body)
-                            .on_action(Message::RequestBodyEdited)
-                            .padding(7),
-                    )
-                    .padding([10, 0]),
-                )
-                .push_maybe(if self.error {
-                    Some(text("Whoops, something went wrong").style(Color::from_rgb(1.0, 0.5, 0.5)))
-                } else {
-                    None
-                })
-                .push(scrollable(text(&self.response)).direction(Direction::Both {
-                    vertical: Default::default(),
-                    horizontal: Default::default(),
-                }))
+                .push(request_body)
+                .push_maybe(error_msg)
+                .push(scrollable_response_text)
                 .width(1000)
                 .padding(20),
         )

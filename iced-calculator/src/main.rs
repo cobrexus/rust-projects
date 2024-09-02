@@ -1,7 +1,8 @@
-use iced::theme;
-use iced::widget::{button, column, container, row, text};
-use iced::Length;
-use iced::{Element, Sandbox, Settings};
+use iced::{
+    theme,
+    widget::{button, column, container, row, text},
+    Element, Length, Sandbox, Settings,
+};
 
 fn main() -> iced::Result {
     Calculator::run(Settings::default())

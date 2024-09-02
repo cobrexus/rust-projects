@@ -1,7 +1,7 @@
 use iced::{
     theme,
     widget::{button, column, container, row, text},
-    Element, Length, Sandbox, Settings,
+    Element, Length, Sandbox, Settings, Theme,
 };
 
 fn main() -> iced::Result {
@@ -43,6 +43,10 @@ impl Sandbox for Calculator {
 
     fn title(&self) -> String {
         String::from("Calculator")
+    }
+
+    fn theme(&self) -> Theme {
+        Theme::Dark
     }
 
     fn update(&mut self, message: Self::Message) {
@@ -110,39 +114,12 @@ impl Sandbox for Calculator {
     }
 
     fn view(&self) -> Element<Message> {
-        fn btn(contents: &str, op: Option<Op>) -> Element<Message> {
-            match contents.parse::<u8>() {
-                Ok(n) => button(
-                    container(text(n))
-                        .width(30)
-                        .height(30)
-                        .center_x()
-                        .center_y(),
-                )
-                .style(theme::Button::Primary)
-                .on_press(Message::NumBtnPressed(n))
-                .into(),
-                Err(_) => button(
-                    container(text(contents))
-                        .width(30)
-                        .height(30)
-                        .center_x()
-                        .center_y(),
-                )
-                .style(theme::Button::Secondary)
-                .on_press(Message::OpBtnPressed(
-                    op.expect("op btn should have op set"),
-                ))
-                .into(),
-            }
-        }
-
         container(column![
-            column![text(self.answer).size(20), text(self.temp),].padding(10),
+            column![text(self.answer).size(20), text(self.temp),].padding([10, 0]),
             row![column![
-                row![btn("7", None), btn("8", None), btn("9", None),].spacing(5),
-                row![btn("4", None), btn("5", None), btn("6", None),].spacing(5),
                 row![btn("1", None), btn("2", None), btn("3", None),].spacing(5),
+                row![btn("4", None), btn("5", None), btn("6", None),].spacing(5),
+                row![btn("7", None), btn("8", None), btn("9", None),].spacing(5),
                 row![
                     btn("+", Some(Op::Add),),
                     btn("-", Some(Op::Sub),),
@@ -163,5 +140,32 @@ impl Sandbox for Calculator {
         .height(Length::Fill)
         .center_y()
         .into()
+    }
+}
+
+fn btn(contents: &str, op: Option<Op>) -> Element<Message> {
+    match contents.parse::<u8>() {
+        Ok(n) => button(
+            container(text(n))
+                .width(30)
+                .height(30)
+                .center_x()
+                .center_y(),
+        )
+        .style(theme::Button::Primary)
+        .on_press(Message::NumBtnPressed(n))
+        .into(),
+        Err(_) => button(
+            container(text(contents))
+                .width(30)
+                .height(30)
+                .center_x()
+                .center_y(),
+        )
+        .style(theme::Button::Secondary)
+        .on_press(Message::OpBtnPressed(
+            op.expect("op btn should have op set"),
+        ))
+        .into(),
     }
 }

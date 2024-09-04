@@ -1,8 +1,7 @@
 use iced::{
     executor,
     widget::{
-        button, container, pick_list, scrollable, scrollable::Direction, text, text_editor,
-        text_input, Column, Row,
+        button, container, pick_list, scrollable, text, text_editor, text_input, Column, Row,
     },
     Application, Color, Command, Element, Length, Settings, Theme,
 };
@@ -25,6 +24,8 @@ struct HttpLens {
     response: Response,
     error: bool,
     response_view_selected: ResponseView,
+    response_headers_content: text_editor::Content,
+    response_body_content: text_editor::Content,
 }
 
 #[derive(Debug, Clone, PartialEq, Display, VariantArray)]
@@ -68,6 +69,8 @@ enum Message {
     UrlSubmitted,
     ResponseReceived(Option<Response>),
     ResponseViewSelected(ResponseView),
+    ResponseHeadersAction(text_editor::Action),
+    ResponseBodyAction(text_editor::Action),
 }
 
 impl Application for HttpLens {
@@ -88,6 +91,8 @@ impl Application for HttpLens {
                 response: Response::new(),
                 error: false,
                 response_view_selected: ResponseView::Body,
+                response_headers_content: text_editor::Content::new(),
+                response_body_content: text_editor::Content::new(),
             },
             Command::none(),
         )
@@ -136,6 +141,10 @@ impl Application for HttpLens {
                     Some(response) => {
                         self.error = false;
                         self.response = response;
+                        self.response_headers_content =
+                            text_editor::Content::with_text(&self.response.headers);
+                        self.response_body_content =
+                            text_editor::Content::with_text(&self.response.body);
                     }
                     None => {
                         self.error = true;
@@ -149,6 +158,22 @@ impl Application for HttpLens {
                 self.response_view_selected = view;
                 Command::none()
             }
+            Message::ResponseHeadersAction(action) => match action {
+                text_editor::Action::Edit(_) => Command::none(),
+                text_editor::Action::Scroll { lines: _ } => Command::none(),
+                _ => {
+                    self.response_headers_content.perform(action);
+                    Command::none()
+                }
+            },
+            Message::ResponseBodyAction(action) => match action {
+                text_editor::Action::Edit(_) => Command::none(),
+                text_editor::Action::Scroll { lines: _ } => Command::none(),
+                _ => {
+                    self.response_body_content.perform(action);
+                    Command::none()
+                }
+            },
         }
     }
 
@@ -237,8 +262,8 @@ impl Application for HttpLens {
                             self.duration,
                         ))
                         .push(
-                            scrollable(text(&self.response.headers))
-                                .direction(Direction::Horizontal(Default::default())),
+                            text_editor(&self.response_headers_content)
+                                .on_action(Message::ResponseHeadersAction),
                         ),
                     ResponseView::Body => Column::new()
                         .push(response_metadata(
@@ -247,8 +272,8 @@ impl Application for HttpLens {
                             self.duration,
                         ))
                         .push(
-                            scrollable(text(&self.response.body))
-                                .direction(Direction::Horizontal(Default::default())),
+                            text_editor(&self.response_body_content)
+                                .on_action(Message::ResponseBodyAction),
                         ),
                 }),
             )

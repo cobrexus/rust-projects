@@ -7,7 +7,9 @@ use iced::{
     Application, Color, Command, Element, Length, Settings, Theme,
 };
 use reqwest;
-use strum_macros::Display;
+use std::time::{Duration, Instant};
+use strum::VariantArray;
+use strum_macros::{Display, VariantArray};
 
 pub fn main() -> iced::Result {
     HttpLens::run(Settings::default())
@@ -18,12 +20,14 @@ struct HttpLens {
     url_entered: String,
     request_body: text_editor::Content,
     loading: bool,
+    start_timestamp: Instant,
+    duration: Duration,
     response: Response,
     error: bool,
     response_view_selected: ResponseView,
 }
 
-#[derive(Debug, Clone, PartialEq, Display)]
+#[derive(Debug, Clone, PartialEq, Display, VariantArray)]
 enum HttpMethod {
     Get,
     Post,
@@ -33,20 +37,11 @@ enum HttpMethod {
     Patch,
 }
 
-const ALL_HTTP_METHODS: [HttpMethod; 6] = [
-    HttpMethod::Get,
-    HttpMethod::Post,
-    HttpMethod::Put,
-    HttpMethod::Delete,
-    HttpMethod::Head,
-    HttpMethod::Patch,
-];
-
 #[derive(Debug, Clone)]
 struct Response {
     headers: String,
     body: String,
-    status: String,
+    status: u16,
 }
 
 impl Response {
@@ -54,12 +49,12 @@ impl Response {
         Self {
             headers: String::new(),
             body: String::new(),
-            status: String::new(),
+            status: 0,
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Display)]
+#[derive(Debug, Clone, PartialEq, Display, VariantArray)]
 enum ResponseView {
     Headers,
     Body,
@@ -71,7 +66,7 @@ enum Message {
     UrlInputChanged(String),
     RequestBodyEdited(text_editor::Action),
     UrlSubmitted,
-    RequestSent(Option<Response>),
+    ResponseReceived(Option<Response>),
     ResponseViewSelected(ResponseView),
 }
 
@@ -88,6 +83,8 @@ impl Application for HttpLens {
                 url_entered: String::new(),
                 request_body: text_editor::Content::new(),
                 loading: false,
+                start_timestamp: Instant::now(),
+                duration: Duration::new(0, 0),
                 response: Response::new(),
                 error: false,
                 response_view_selected: ResponseView::Body,
@@ -120,17 +117,21 @@ impl Application for HttpLens {
             }
             Message::UrlSubmitted => {
                 self.loading = true;
+                self.start_timestamp = Instant::now();
+
                 Command::perform(
                     send_request(
                         self.selected_http_method.clone(),
                         self.url_entered.clone(),
                         self.request_body.text(),
                     ),
-                    Message::RequestSent,
+                    Message::ResponseReceived,
                 )
             }
-            Message::RequestSent(result) => {
+            Message::ResponseReceived(result) => {
                 self.loading = false;
+                self.duration = self.start_timestamp.elapsed();
+
                 match result {
                     Some(response) => {
                         self.error = false;
@@ -153,7 +154,7 @@ impl Application for HttpLens {
 
     fn view(&self) -> Element<Message> {
         let http_method_dropdown = pick_list(
-            ALL_HTTP_METHODS,
+            HttpMethod::VARIANTS,
             Some(&self.selected_http_method),
             Message::HttpMethodSelected,
         )
@@ -191,7 +192,7 @@ impl Application for HttpLens {
                 Some(
                     container(
                         pick_list(
-                            [ResponseView::Headers, ResponseView::Body],
+                            ResponseView::VARIANTS,
                             Some(&self.response_view_selected),
                             Message::ResponseViewSelected,
                         )
@@ -203,14 +204,25 @@ impl Application for HttpLens {
                 None
             };
 
-        fn response_meta_data(content: &str, status: &str) -> Element<'static, Message> {
+        fn response_metadata(
+            content: &str,
+            status: u16,
+            duration: Duration,
+        ) -> Element<'static, Message> {
             Row::new()
-                .push(text("Size: "))
-                .push(text(content.as_bytes().len()))
-                .push("B")
-                .push(" • ")
-                .push("Status: ")
-                .push(text(status))
+                .push(
+                    text(format!(
+                        "Status: {} • Time: {}ms • Size: {}B",
+                        status,
+                        duration.as_millis(),
+                        content.as_bytes().len()
+                    ))
+                    .style(if status == 200 {
+                        Color::from_rgb(0.5, 1.0, 0.5)
+                    } else {
+                        Color::from_rgb(1.0, 0.5, 0.5)
+                    }),
+                )
                 .padding([10, 0])
                 .into()
         }
@@ -219,18 +231,20 @@ impl Application for HttpLens {
             Some(
                 Column::new().push(match self.response_view_selected {
                     ResponseView::Headers => Column::new()
-                        .push(response_meta_data(
+                        .push(response_metadata(
                             &self.response.headers,
-                            &self.response.status,
+                            self.response.status,
+                            self.duration,
                         ))
                         .push(
                             scrollable(text(&self.response.headers))
                                 .direction(Direction::Horizontal(Default::default())),
                         ),
                     ResponseView::Body => Column::new()
-                        .push(response_meta_data(
+                        .push(response_metadata(
                             &self.response.body,
-                            &self.response.status,
+                            self.response.status,
+                            self.duration,
                         ))
                         .push(
                             scrollable(text(&self.response.body))
@@ -267,152 +281,36 @@ impl Application for HttpLens {
 }
 
 async fn send_request(method: HttpMethod, url: String, body: String) -> Option<Response> {
-    match method {
-        HttpMethod::Get => {
-            let client = reqwest::Client::new();
-            if let Ok(response) = client.get(url).body(body).send().await {
-                let headers = response
-                    .headers()
-                    .iter()
-                    .map(|header| {
-                        format!("{}: {}\n", header.0.as_str(), header.1.to_str().unwrap())
-                    })
-                    .collect::<String>();
+    let client = reqwest::Client::new();
 
-                let status = response.status().as_str().to_owned();
+    let response = match method {
+        HttpMethod::Get => client.get(url),
+        HttpMethod::Post => client.post(url),
+        HttpMethod::Put => client.put(url),
+        HttpMethod::Delete => client.delete(url),
+        HttpMethod::Head => client.head(url),
+        HttpMethod::Patch => client.patch(url),
+    };
 
-                if let Ok(body) = response.text().await {
-                    Some(Response {
-                        headers,
-                        body,
-                        status,
-                    })
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+    if let Ok(r) = response.body(body).send().await {
+        let headers = r
+            .headers()
+            .iter()
+            .map(|header| format!("{}: {}\n", header.0.as_str(), header.1.to_str().unwrap()))
+            .collect::<String>();
+
+        let status = r.status().as_u16().to_owned();
+
+        if let Ok(body) = r.text().await {
+            Some(Response {
+                headers,
+                body,
+                status,
+            })
+        } else {
+            None
         }
-        HttpMethod::Post => {
-            let client = reqwest::Client::new();
-            if let Ok(response) = client.post(url).body(body).send().await {
-                let headers = response
-                    .headers()
-                    .iter()
-                    .map(|header| format!("{}: {}", header.0.as_str(), header.1.to_str().unwrap()))
-                    .collect::<String>();
-
-                let status = response.status().as_str().to_owned();
-
-                if let Ok(body) = response.text().await {
-                    Some(Response {
-                        headers,
-                        body,
-                        status,
-                    })
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        }
-        HttpMethod::Put => {
-            let client = reqwest::Client::new();
-            if let Ok(response) = client.put(url).body(body).send().await {
-                let headers = response
-                    .headers()
-                    .iter()
-                    .map(|header| format!("{}: {}", header.0.as_str(), header.1.to_str().unwrap()))
-                    .collect::<String>();
-
-                let status = response.status().as_str().to_owned();
-
-                if let Ok(body) = response.text().await {
-                    Some(Response {
-                        headers,
-                        body,
-                        status,
-                    })
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        }
-        HttpMethod::Delete => {
-            let client = reqwest::Client::new();
-            if let Ok(response) = client.delete(url).body(body).send().await {
-                let headers = response
-                    .headers()
-                    .iter()
-                    .map(|header| format!("{}: {}", header.0.as_str(), header.1.to_str().unwrap()))
-                    .collect::<String>();
-
-                let status = response.status().as_str().to_owned();
-
-                if let Ok(body) = response.text().await {
-                    Some(Response {
-                        headers,
-                        body,
-                        status,
-                    })
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        }
-        HttpMethod::Head => {
-            let client = reqwest::Client::new();
-            if let Ok(response) = client.head(url).body(body).send().await {
-                let headers = response
-                    .headers()
-                    .iter()
-                    .map(|header| format!("{}: {}", header.0.as_str(), header.1.to_str().unwrap()))
-                    .collect::<String>();
-
-                let status = response.status().as_str().to_owned();
-
-                if let Ok(body) = response.text().await {
-                    Some(Response {
-                        headers,
-                        body,
-                        status,
-                    })
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        }
-        HttpMethod::Patch => {
-            let client = reqwest::Client::new();
-            if let Ok(response) = client.patch(url).body(body).send().await {
-                let headers = response
-                    .headers()
-                    .iter()
-                    .map(|header| format!("{}: {}", header.0.as_str(), header.1.to_str().unwrap()))
-                    .collect::<String>();
-
-                let status = response.status().as_str().to_owned();
-
-                if let Ok(body) = response.text().await {
-                    Some(Response {
-                        headers,
-                        body,
-                        status,
-                    })
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        }
+    } else {
+        None
     }
 }

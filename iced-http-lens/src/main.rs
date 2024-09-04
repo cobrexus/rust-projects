@@ -1,8 +1,6 @@
 use iced::{
     executor,
-    widget::{
-        button, container, pick_list, scrollable, text, text_editor, text_input, Column, Row,
-    },
+    widget::{button, container, pick_list, text, text_editor, text_input, Column, Row},
     Application, Color, Command, Element, Length, Settings, Theme,
 };
 use reqwest;
@@ -160,7 +158,6 @@ impl Application for HttpLens {
             }
             Message::ResponseHeadersAction(action) => match action {
                 text_editor::Action::Edit(_) => Command::none(),
-                text_editor::Action::Scroll { lines: _ } => Command::none(),
                 _ => {
                     self.response_headers_content.perform(action);
                     Command::none()
@@ -168,7 +165,6 @@ impl Application for HttpLens {
             },
             Message::ResponseBodyAction(action) => match action {
                 text_editor::Action::Edit(_) => Command::none(),
-                text_editor::Action::Scroll { lines: _ } => Command::none(),
                 _ => {
                     self.response_body_content.perform(action);
                     Command::none()
@@ -281,26 +277,24 @@ impl Application for HttpLens {
             None
         };
 
-        scrollable(
-            container(
-                Column::new()
-                    .push(
-                        Row::new()
-                            .push(http_method_dropdown)
-                            .push(url_input)
-                            .push(submit_btn)
-                            .spacing(10),
-                    )
-                    .push(request_body)
-                    .push_maybe(error_msg)
-                    .push_maybe(response_view_dropdown)
-                    .push_maybe(response_text)
-                    .width(1000)
-                    .padding(20),
-            )
-            .center_x()
-            .width(Length::Fill),
+        container(
+            Column::new()
+                .push(
+                    Row::new()
+                        .push(http_method_dropdown)
+                        .push(url_input)
+                        .push(submit_btn)
+                        .spacing(10),
+                )
+                .push(request_body)
+                .push_maybe(error_msg)
+                .push_maybe(response_view_dropdown)
+                .push_maybe(response_text)
+                .width(1000)
+                .padding(20),
         )
+        .center_x()
+        .width(Length::Fill)
         .into()
     }
 }

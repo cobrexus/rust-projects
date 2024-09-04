@@ -18,9 +18,9 @@ struct HttpLens {
     url_entered: String,
     request_body: text_editor::Content,
     loading: bool,
-    response_headers: String,
-    response_body: String,
+    response: Response,
     error: bool,
+    response_view_selected: ResponseView,
 }
 
 #[derive(Debug, Clone, PartialEq, Display)]
@@ -43,12 +43,36 @@ const ALL_HTTP_METHODS: [HttpMethod; 6] = [
 ];
 
 #[derive(Debug, Clone)]
+struct Response {
+    headers: String,
+    body: String,
+    status: String,
+}
+
+impl Response {
+    fn new() -> Self {
+        Self {
+            headers: String::new(),
+            body: String::new(),
+            status: String::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Display)]
+enum ResponseView {
+    Headers,
+    Body,
+}
+
+#[derive(Debug, Clone)]
 enum Message {
     HttpMethodSelected(HttpMethod),
     UrlInputChanged(String),
     RequestBodyEdited(text_editor::Action),
     UrlSubmitted,
-    RequestSent(Option<(ResponseHeaders, ResponseBody)>),
+    RequestSent(Option<Response>),
+    ResponseViewSelected(ResponseView),
 }
 
 impl Application for HttpLens {
@@ -64,9 +88,9 @@ impl Application for HttpLens {
                 url_entered: String::new(),
                 request_body: text_editor::Content::new(),
                 loading: false,
-                response_headers: String::new(),
-                response_body: String::new(),
+                response: Response::new(),
                 error: false,
+                response_view_selected: ResponseView::Body,
             },
             Command::none(),
         )
@@ -76,11 +100,11 @@ impl Application for HttpLens {
         String::from("HTTP Lens")
     }
 
-    fn theme(&self) -> Self::Theme {
+    fn theme(&self) -> Theme {
         Theme::Dark
     }
 
-    fn update(&mut self, message: Self::Message) -> Command<Message> {
+    fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::HttpMethodSelected(method) => {
                 self.selected_http_method = method;
@@ -110,24 +134,27 @@ impl Application for HttpLens {
                 match result {
                     Some(response) => {
                         self.error = false;
-                        self.response_headers = response.0 .0;
-                        self.response_body = response.1 .0;
+                        self.response = response;
                     }
                     None => {
                         self.error = true;
-                        self.response_headers = String::new();
-                        self.response_body = String::new();
+                        self.response.headers = String::new();
+                        self.response.body = String::new();
                     }
                 }
+                Command::none()
+            }
+            Message::ResponseViewSelected(view) => {
+                self.response_view_selected = view;
                 Command::none()
             }
         }
     }
 
-    fn view(&self) -> Element<Self::Message> {
+    fn view(&self) -> Element<Message> {
         let http_method_dropdown = pick_list(
             ALL_HTTP_METHODS,
-            Some(self.selected_http_method.clone()),
+            Some(&self.selected_http_method),
             Message::HttpMethodSelected,
         )
         .padding(10);
@@ -159,24 +186,61 @@ impl Application for HttpLens {
             None
         };
 
-        let scrollable_response_text =
-            if !self.response_headers.is_empty() || !self.response_body.is_empty() {
+        let response_view_dropdown =
+            if !self.response.headers.is_empty() || !self.response.body.is_empty() {
                 Some(
-                    Column::new()
-                        .push(container(text("Response Headers").size(25)).padding([10, 0]))
-                        .push(
-                            scrollable(text(&self.response_headers))
-                                .direction(Direction::Horizontal(Default::default())),
+                    container(
+                        pick_list(
+                            [ResponseView::Headers, ResponseView::Body],
+                            Some(&self.response_view_selected),
+                            Message::ResponseViewSelected,
                         )
-                        .push(container(text("Response Body").size(25)).padding([10, 0]))
-                        .push(
-                            scrollable(text(&self.response_body))
-                                .direction(Direction::Horizontal(Default::default())),
-                        ),
+                        .padding(10),
+                    )
+                    .padding([10, 0]),
                 )
             } else {
                 None
             };
+
+        fn response_meta_data(content: &str, status: &str) -> Element<'static, Message> {
+            Row::new()
+                .push(text("Size: "))
+                .push(text(content.as_bytes().len()))
+                .push("B")
+                .push(" • ")
+                .push("Status: ")
+                .push(text(status))
+                .padding([10, 0])
+                .into()
+        }
+
+        let response_text = if !self.response.headers.is_empty() || !self.response.body.is_empty() {
+            Some(
+                Column::new().push(match self.response_view_selected {
+                    ResponseView::Headers => Column::new()
+                        .push(response_meta_data(
+                            &self.response.headers,
+                            &self.response.status,
+                        ))
+                        .push(
+                            scrollable(text(&self.response.headers))
+                                .direction(Direction::Horizontal(Default::default())),
+                        ),
+                    ResponseView::Body => Column::new()
+                        .push(response_meta_data(
+                            &self.response.body,
+                            &self.response.status,
+                        ))
+                        .push(
+                            scrollable(text(&self.response.body))
+                                .direction(Direction::Horizontal(Default::default())),
+                        ),
+                }),
+            )
+        } else {
+            None
+        };
 
         scrollable(
             container(
@@ -190,7 +254,8 @@ impl Application for HttpLens {
                     )
                     .push(request_body)
                     .push_maybe(error_msg)
-                    .push_maybe(scrollable_response_text)
+                    .push_maybe(response_view_dropdown)
+                    .push_maybe(response_text)
                     .width(1000)
                     .padding(20),
             )
@@ -201,17 +266,7 @@ impl Application for HttpLens {
     }
 }
 
-#[derive(Debug, Clone)]
-struct ResponseBody(String);
-
-#[derive(Debug, Clone)]
-struct ResponseHeaders(String);
-
-async fn send_request(
-    method: HttpMethod,
-    url: String,
-    body: String,
-) -> Option<(ResponseHeaders, ResponseBody)> {
+async fn send_request(method: HttpMethod, url: String, body: String) -> Option<Response> {
     match method {
         HttpMethod::Get => {
             let client = reqwest::Client::new();
@@ -224,8 +279,14 @@ async fn send_request(
                     })
                     .collect::<String>();
 
+                let status = response.status().as_str().to_owned();
+
                 if let Ok(body) = response.text().await {
-                    Some((ResponseHeaders(headers), ResponseBody(body)))
+                    Some(Response {
+                        headers,
+                        body,
+                        status,
+                    })
                 } else {
                     None
                 }
@@ -242,8 +303,14 @@ async fn send_request(
                     .map(|header| format!("{}: {}", header.0.as_str(), header.1.to_str().unwrap()))
                     .collect::<String>();
 
+                let status = response.status().as_str().to_owned();
+
                 if let Ok(body) = response.text().await {
-                    Some((ResponseHeaders(headers), ResponseBody(body)))
+                    Some(Response {
+                        headers,
+                        body,
+                        status,
+                    })
                 } else {
                     None
                 }
@@ -260,8 +327,14 @@ async fn send_request(
                     .map(|header| format!("{}: {}", header.0.as_str(), header.1.to_str().unwrap()))
                     .collect::<String>();
 
+                let status = response.status().as_str().to_owned();
+
                 if let Ok(body) = response.text().await {
-                    Some((ResponseHeaders(headers), ResponseBody(body)))
+                    Some(Response {
+                        headers,
+                        body,
+                        status,
+                    })
                 } else {
                     None
                 }
@@ -278,8 +351,14 @@ async fn send_request(
                     .map(|header| format!("{}: {}", header.0.as_str(), header.1.to_str().unwrap()))
                     .collect::<String>();
 
+                let status = response.status().as_str().to_owned();
+
                 if let Ok(body) = response.text().await {
-                    Some((ResponseHeaders(headers), ResponseBody(body)))
+                    Some(Response {
+                        headers,
+                        body,
+                        status,
+                    })
                 } else {
                     None
                 }
@@ -296,8 +375,14 @@ async fn send_request(
                     .map(|header| format!("{}: {}", header.0.as_str(), header.1.to_str().unwrap()))
                     .collect::<String>();
 
+                let status = response.status().as_str().to_owned();
+
                 if let Ok(body) = response.text().await {
-                    Some((ResponseHeaders(headers), ResponseBody(body)))
+                    Some(Response {
+                        headers,
+                        body,
+                        status,
+                    })
                 } else {
                     None
                 }
@@ -314,8 +399,14 @@ async fn send_request(
                     .map(|header| format!("{}: {}", header.0.as_str(), header.1.to_str().unwrap()))
                     .collect::<String>();
 
+                let status = response.status().as_str().to_owned();
+
                 if let Ok(body) = response.text().await {
-                    Some((ResponseHeaders(headers), ResponseBody(body)))
+                    Some(Response {
+                        headers,
+                        body,
+                        status,
+                    })
                 } else {
                     None
                 }

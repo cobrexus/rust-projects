@@ -9,7 +9,7 @@ use strum_macros::{Display, VariantArray};
 
 pub fn main() -> iced::Result {
     iced::application("HTTP Lens", HttpLens::update, HttpLens::view)
-        .theme(|_| Theme::Dark)
+        .theme(HttpLens::theme)
         .default_font(Font {
             family: Family::Monospace,
             weight: Weight::Normal,
@@ -70,6 +70,10 @@ enum Message {
 }
 
 impl HttpLens {
+    fn theme(_state: &HttpLens) -> Theme {
+        Theme::Dark
+    }
+
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::HttpMethodSelected(method) => {

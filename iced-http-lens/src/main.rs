@@ -1,24 +1,30 @@
 use iced::{
-    executor,
+    font::{Family, Stretch, Style, Weight},
     widget::{button, container, pick_list, text, text_editor, text_input, Column, Row},
-    Application, Color, Command, Element, Length, Settings, Theme,
+    Color, Element, Font, Length, Task, Theme,
 };
 use reqwest;
-use std::time::{Duration, Instant};
 use strum::VariantArray;
 use strum_macros::{Display, VariantArray};
 
 pub fn main() -> iced::Result {
-    HttpLens::run(Settings::default())
+    iced::application("HTTP Lens", HttpLens::update, HttpLens::view)
+        .theme(|_| Theme::Dark)
+        .default_font(Font {
+            family: Family::Monospace,
+            weight: Weight::Normal,
+            stretch: Stretch::Normal,
+            style: Style::Normal,
+        })
+        .run()
 }
 
+#[derive(Default)]
 struct HttpLens {
     selected_http_method: HttpMethod,
     url_entered: String,
     request_body: text_editor::Content,
     loading: bool,
-    start_timestamp: Instant,
-    duration: Duration,
     response: Response,
     error: bool,
     response_view_selected: ResponseView,
@@ -26,8 +32,9 @@ struct HttpLens {
     response_body_content: text_editor::Content,
 }
 
-#[derive(Debug, Clone, PartialEq, Display, VariantArray)]
+#[derive(Default, Debug, Clone, PartialEq, Display, VariantArray)]
 enum HttpMethod {
+    #[default]
     Get,
     Post,
     Put,
@@ -36,26 +43,17 @@ enum HttpMethod {
     Patch,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 struct Response {
     headers: String,
     body: String,
     status: u16,
 }
 
-impl Response {
-    fn new() -> Self {
-        Self {
-            headers: String::new(),
-            body: String::new(),
-            status: 0,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Display, VariantArray)]
+#[derive(Default, Debug, Clone, PartialEq, Display, VariantArray)]
 enum ResponseView {
     Headers,
+    #[default]
     Body,
 }
 
@@ -71,58 +69,25 @@ enum Message {
     ResponseBodyAction(text_editor::Action),
 }
 
-impl Application for HttpLens {
-    type Executor = executor::Default;
-    type Flags = ();
-    type Message = Message;
-    type Theme = Theme;
-
-    fn new(_flags: ()) -> (HttpLens, Command<Message>) {
-        (
-            HttpLens {
-                selected_http_method: HttpMethod::Get,
-                url_entered: String::new(),
-                request_body: text_editor::Content::new(),
-                loading: false,
-                start_timestamp: Instant::now(),
-                duration: Duration::new(0, 0),
-                response: Response::new(),
-                error: false,
-                response_view_selected: ResponseView::Body,
-                response_headers_content: text_editor::Content::new(),
-                response_body_content: text_editor::Content::new(),
-            },
-            Command::none(),
-        )
-    }
-
-    fn title(&self) -> String {
-        String::from("HTTP Lens")
-    }
-
-    fn theme(&self) -> Theme {
-        Theme::Dark
-    }
-
-    fn update(&mut self, message: Message) -> Command<Message> {
+impl HttpLens {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::HttpMethodSelected(method) => {
                 self.selected_http_method = method;
-                Command::none()
+                Task::none()
             }
             Message::UrlInputChanged(url) => {
                 self.url_entered = url;
-                Command::none()
+                Task::none()
             }
             Message::RequestBodyEdited(action) => {
                 self.request_body.perform(action);
-                Command::none()
+                Task::none()
             }
             Message::UrlSubmitted => {
                 self.loading = true;
-                self.start_timestamp = Instant::now();
 
-                Command::perform(
+                Task::perform(
                     send_request(
                         self.selected_http_method.clone(),
                         self.url_entered.clone(),
@@ -133,7 +98,6 @@ impl Application for HttpLens {
             }
             Message::ResponseReceived(result) => {
                 self.loading = false;
-                self.duration = self.start_timestamp.elapsed();
 
                 match result {
                     Some(response) => {
@@ -150,24 +114,24 @@ impl Application for HttpLens {
                         self.response.body = String::new();
                     }
                 }
-                Command::none()
+                Task::none()
             }
             Message::ResponseViewSelected(view) => {
                 self.response_view_selected = view;
-                Command::none()
+                Task::none()
             }
             Message::ResponseHeadersAction(action) => match action {
-                text_editor::Action::Edit(_) => Command::none(),
+                text_editor::Action::Edit(_) => Task::none(),
                 _ => {
                     self.response_headers_content.perform(action);
-                    Command::none()
+                    Task::none()
                 }
             },
             Message::ResponseBodyAction(action) => match action {
-                text_editor::Action::Edit(_) => Command::none(),
+                text_editor::Action::Edit(_) => Task::none(),
                 _ => {
                     self.response_body_content.perform(action);
-                    Command::none()
+                    Task::none()
                 }
             },
         }
@@ -202,7 +166,7 @@ impl Application for HttpLens {
 
         let error_msg = if self.error {
             Some(container(
-                text("Whoops, something went wrong").style(Color::from_rgb(1.0, 0.5, 0.5)),
+                text("Whoops, something went wrong").color(Color::from_rgb(1.0, 0.5, 0.5)),
             ))
         } else {
             None
@@ -225,20 +189,15 @@ impl Application for HttpLens {
                 None
             };
 
-        fn response_metadata(
-            content: &str,
-            status: u16,
-            duration: Duration,
-        ) -> Element<'static, Message> {
+        fn response_metadata(content: &str, status: u16) -> Element<'static, Message> {
             Row::new()
                 .push(
                     text(format!(
-                        "Status: {} • Time: {}ms • Size: {}B",
+                        "Status: {} • Size: {}B",
                         status,
-                        duration.as_millis(),
                         content.as_bytes().len()
                     ))
-                    .style(if status == 200 {
+                    .color(if status == 200 {
                         Color::from_rgb(0.5, 1.0, 0.5)
                     } else {
                         Color::from_rgb(1.0, 0.5, 0.5)
@@ -255,18 +214,13 @@ impl Application for HttpLens {
                         .push(response_metadata(
                             &self.response.headers,
                             self.response.status,
-                            self.duration,
                         ))
                         .push(
                             text_editor(&self.response_headers_content)
                                 .on_action(Message::ResponseHeadersAction),
                         ),
                     ResponseView::Body => Column::new()
-                        .push(response_metadata(
-                            &self.response.body,
-                            self.response.status,
-                            self.duration,
-                        ))
+                        .push(response_metadata(&self.response.body, self.response.status))
                         .push(
                             text_editor(&self.response_body_content)
                                 .on_action(Message::ResponseBodyAction),
@@ -293,8 +247,7 @@ impl Application for HttpLens {
                 .width(1000)
                 .padding(20),
         )
-        .center_x()
-        .width(Length::Fill)
+        .center_x(Length::Fill)
         .into()
     }
 }

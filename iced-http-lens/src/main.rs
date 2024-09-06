@@ -1,26 +1,37 @@
 use iced::{
-    font::{Family, Stretch, Style, Weight},
+    border,
+    daemon::Appearance,
+    theme,
     widget::{button, container, pick_list, text, text_editor, text_input, Column, Row},
-    Color, Element, Font, Length, Task, Theme,
+    Background, Border, Color, Element, Font, Length, Shadow, Task, Theme, Vector,
 };
 use reqwest;
 use strum::VariantArray;
 use strum_macros::{Display, VariantArray};
 
 pub fn main() -> iced::Result {
-    iced::application("HTTP Lens", HttpLens::update, HttpLens::view)
-        .theme(HttpLens::theme)
-        .default_font(Font {
-            family: Family::Monospace,
-            weight: Weight::Normal,
-            stretch: Stretch::Normal,
-            style: Style::Normal,
+    iced::application("HTTP Lens", update, view)
+        .theme(|_| {
+            Theme::custom(
+                String::from("HTTP Lens Theme"),
+                theme::Palette {
+                    background: Color::from_rgb(0.0, 0.0, 0.0),
+                    text: Color::from_rgb(1.0, 1.0, 1.0),
+                    primary: Color::from_rgb(1.0, 1.0, 1.0),
+                    success: Color::from_rgb(0.5, 1.0, 0.5),
+                    danger: Color::from_rgb(1.0, 0.5, 0.5),
+                },
+            )
+        })
+        .style(|_, _| Appearance {
+            background_color: Color::from_rgb(0.0, 0.0, 0.0),
+            text_color: Color::from_rgb(1.0, 1.0, 1.0),
         })
         .run()
 }
 
 #[derive(Default)]
-struct HttpLens {
+struct State {
     selected_http_method: HttpMethod,
     url_entered: String,
     request_body: text_editor::Content,
@@ -69,191 +80,283 @@ enum Message {
     ResponseBodyAction(text_editor::Action),
 }
 
-impl HttpLens {
-    fn theme(_state: &HttpLens) -> Theme {
-        Theme::Dark
-    }
-
-    fn update(&mut self, message: Message) -> Task<Message> {
-        match message {
-            Message::HttpMethodSelected(method) => {
-                self.selected_http_method = method;
-                Task::none()
-            }
-            Message::UrlInputChanged(url) => {
-                self.url_entered = url;
-                Task::none()
-            }
-            Message::RequestBodyEdited(action) => {
-                self.request_body.perform(action);
-                Task::none()
-            }
-            Message::UrlSubmitted => {
-                self.loading = true;
-
-                Task::perform(
-                    send_request(
-                        self.selected_http_method.clone(),
-                        self.url_entered.clone(),
-                        self.request_body.text(),
-                    ),
-                    Message::ResponseReceived,
-                )
-            }
-            Message::ResponseReceived(result) => {
-                self.loading = false;
-
-                match result {
-                    Some(response) => {
-                        self.error = false;
-                        self.response = response;
-                        self.response_headers_content =
-                            text_editor::Content::with_text(&self.response.headers);
-                        self.response_body_content =
-                            text_editor::Content::with_text(&self.response.body);
-                    }
-                    None => {
-                        self.error = true;
-                        self.response.headers = String::new();
-                        self.response.body = String::new();
-                    }
-                }
-                Task::none()
-            }
-            Message::ResponseViewSelected(view) => {
-                self.response_view_selected = view;
-                Task::none()
-            }
-            Message::ResponseHeadersAction(action) => match action {
-                text_editor::Action::Edit(_) => Task::none(),
-                _ => {
-                    self.response_headers_content.perform(action);
-                    Task::none()
-                }
-            },
-            Message::ResponseBodyAction(action) => match action {
-                text_editor::Action::Edit(_) => Task::none(),
-                _ => {
-                    self.response_body_content.perform(action);
-                    Task::none()
-                }
-            },
+fn update(state: &mut State, message: Message) -> Task<Message> {
+    match message {
+        Message::HttpMethodSelected(method) => {
+            state.selected_http_method = method;
+            Task::none()
         }
-    }
+        Message::UrlInputChanged(url) => {
+            state.url_entered = url;
+            Task::none()
+        }
+        Message::RequestBodyEdited(action) => {
+            state.request_body.perform(action);
+            Task::none()
+        }
+        Message::UrlSubmitted => {
+            state.loading = true;
 
-    fn view(&self) -> Element<Message> {
-        let http_method_dropdown = pick_list(
-            HttpMethod::VARIANTS,
-            Some(&self.selected_http_method),
-            Message::HttpMethodSelected,
+            Task::perform(
+                send_request(
+                    state.selected_http_method.clone(),
+                    state.url_entered.clone(),
+                    state.request_body.text(),
+                ),
+                Message::ResponseReceived,
+            )
+        }
+        Message::ResponseReceived(result) => {
+            state.loading = false;
+
+            match result {
+                Some(response) => {
+                    state.error = false;
+                    state.response = response;
+                    state.response_headers_content =
+                        text_editor::Content::with_text(&state.response.headers);
+                    state.response_body_content =
+                        text_editor::Content::with_text(&state.response.body);
+                }
+                None => {
+                    state.error = true;
+                    state.response.headers = String::new();
+                    state.response.body = String::new();
+                }
+            }
+            Task::none()
+        }
+        Message::ResponseViewSelected(view) => {
+            state.response_view_selected = view;
+            Task::none()
+        }
+        Message::ResponseHeadersAction(action) => match action {
+            text_editor::Action::Edit(_) => Task::none(),
+            _ => {
+                state.response_headers_content.perform(action);
+                Task::none()
+            }
+        },
+        Message::ResponseBodyAction(action) => match action {
+            text_editor::Action::Edit(_) => Task::none(),
+            _ => {
+                state.response_body_content.perform(action);
+                Task::none()
+            }
+        },
+    }
+}
+
+fn view(state: &State) -> Element<Message> {
+    let http_method_dropdown = pick_list(
+        HttpMethod::VARIANTS,
+        Some(&state.selected_http_method),
+        Message::HttpMethodSelected,
+    )
+    .style(|_, _| pick_list::Style {
+        border: Border {
+            radius: border::Radius {
+                top_left: 10.0,
+                top_right: 0.0,
+                bottom_right: 0.0,
+                bottom_left: 10.0,
+            },
+            color: Color::TRANSPARENT,
+            width: 0.0,
+        },
+        text_color: Color::from_rgb(0.0, 0.0, 0.0),
+        placeholder_color: Color::from_rgb(1.0, 1.0, 1.0),
+        handle_color: Color::from_rgb(0.0, 0.0, 0.0),
+        background: Background::Color(Color::from_rgb(1.0, 1.0, 1.0)),
+    })
+    .padding(10);
+
+    let url_input = text_input("Enter URL", &state.url_entered)
+        .on_input(Message::UrlInputChanged)
+        .on_submit(Message::UrlSubmitted)
+        .padding(10)
+        .style(|_, _| text_input::Style {
+            background: Background::Color(Color::TRANSPARENT),
+            border: Border {
+                color: Color::from_rgb(1.0, 1.0, 1.0),
+                width: 1.0,
+                radius: border::Radius {
+                    top_left: 0.0,
+                    top_right: 0.0,
+                    bottom_right: 0.0,
+                    bottom_left: 0.0,
+                },
+            },
+            icon: Default::default(),
+            placeholder: Color::from_rgb(0.5, 0.5, 0.5),
+            value: Color::from_rgb(1.0, 1.0, 1.0),
+            selection: Color::from_rgb(0.5, 0.5, 0.5),
+        });
+
+    let submit_btn: Element<Message> = if state.loading {
+        button("Loading...")
+            .padding(10)
+            .on_press_maybe(None)
+            .style(|_, _| button::Style {
+                border: Border {
+                    radius: border::Radius {
+                        top_left: 0.0,
+                        top_right: 10.0,
+                        bottom_right: 10.0,
+                        bottom_left: 0.0,
+                    },
+                    color: Color::TRANSPARENT,
+                    width: 0.0,
+                },
+                text_color: Color::from_rgb(0.0, 0.0, 0.0),
+                background: Some(Background::Color(Color::from_rgb(0.5, 0.5, 0.5))),
+                shadow: Shadow {
+                    color: Color::TRANSPARENT,
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 0.0,
+                },
+            })
+            .into()
+    } else {
+        button("Send Request")
+            .padding(10)
+            .on_press(Message::UrlSubmitted)
+            .style(|_, _| button::Style {
+                border: Border {
+                    radius: border::Radius {
+                        top_left: 0.0,
+                        top_right: 10.0,
+                        bottom_right: 10.0,
+                        bottom_left: 0.0,
+                    },
+                    color: Color::TRANSPARENT,
+                    width: 0.0,
+                },
+                text_color: Color::from_rgb(0.0, 0.0, 0.0),
+                background: Some(Background::Color(Color::from_rgb(1.0, 1.0, 1.0))),
+                shadow: Shadow {
+                    color: Color::TRANSPARENT,
+                    offset: Vector::new(0.0, 0.0),
+                    blur_radius: 0.0,
+                },
+            })
+            .into()
+    };
+
+    let request_body = Column::new()
+        .push(container("Request body").padding([10, 0]))
+        .push(
+            text_editor(&state.request_body)
+                .on_action(Message::RequestBodyEdited)
+                .font(Font::MONOSPACE),
         )
-        .padding(10);
+        .padding([10, 0]);
 
-        let url_input = text_input("Enter URL", &self.url_entered)
-            .on_input(Message::UrlInputChanged)
-            .on_submit(Message::UrlSubmitted)
-            .padding(10);
+    let error_msg = if state.error {
+        Some(container(
+            text("Whoops, something went wrong").color(Color::from_rgb(1.0, 0.5, 0.5)),
+        ))
+    } else {
+        None
+    };
 
-        let submit_btn: Element<Message> = if self.loading {
-            button("Loading...").padding(10).on_press_maybe(None).into()
-        } else {
-            button("Send Request")
-                .padding(10)
-                .on_press(Message::UrlSubmitted)
-                .into()
-        };
-
-        let request_body = Column::new()
-            .push(container("Request body").padding([10, 0]))
-            .push(text_editor(&self.request_body).on_action(Message::RequestBodyEdited))
-            .padding([10, 0]);
-
-        let error_msg = if self.error {
-            Some(container(
-                text("Whoops, something went wrong").color(Color::from_rgb(1.0, 0.5, 0.5)),
-            ))
-        } else {
-            None
-        };
-
-        let response_view_dropdown =
-            if !self.response.headers.is_empty() || !self.response.body.is_empty() {
-                Some(
-                    container(
-                        pick_list(
-                            ResponseView::VARIANTS,
-                            Some(&self.response_view_selected),
-                            Message::ResponseViewSelected,
-                        )
-                        .padding(10),
-                    )
-                    .padding([10, 0]),
-                )
-            } else {
-                None
-            };
-
-        fn response_metadata(content: &str, status: u16) -> Element<'static, Message> {
-            Row::new()
-                .push(
-                    text(format!(
-                        "Status: {} • Size: {}B",
-                        status,
-                        content.as_bytes().len()
-                    ))
-                    .color(if status == 200 {
-                        Color::from_rgb(0.5, 1.0, 0.5)
-                    } else {
-                        Color::from_rgb(1.0, 0.5, 0.5)
-                    }),
-                )
-                .padding([10, 0])
-                .into()
-        }
-
-        let response_text = if !self.response.headers.is_empty() || !self.response.body.is_empty() {
+    let response_view_dropdown =
+        if !state.response.headers.is_empty() || !state.response.body.is_empty() {
             Some(
-                Column::new().push(match self.response_view_selected {
-                    ResponseView::Headers => Column::new()
-                        .push(response_metadata(
-                            &self.response.headers,
-                            self.response.status,
-                        ))
-                        .push(
-                            text_editor(&self.response_headers_content)
-                                .on_action(Message::ResponseHeadersAction),
-                        ),
-                    ResponseView::Body => Column::new()
-                        .push(response_metadata(&self.response.body, self.response.status))
-                        .push(
-                            text_editor(&self.response_body_content)
-                                .on_action(Message::ResponseBodyAction),
-                        ),
-                }),
+                container(
+                    pick_list(
+                        ResponseView::VARIANTS,
+                        Some(&state.response_view_selected),
+                        Message::ResponseViewSelected,
+                    )
+                    .style(|_, _| pick_list::Style {
+                        border: Border {
+                            radius: border::Radius {
+                                top_left: 10.0,
+                                top_right: 10.0,
+                                bottom_right: 10.0,
+                                bottom_left: 10.0,
+                            },
+                            color: Color::TRANSPARENT,
+                            width: 0.0,
+                        },
+                        text_color: Color::from_rgb(0.0, 0.0, 0.0),
+                        placeholder_color: Color::from_rgb(1.0, 1.0, 1.0),
+                        handle_color: Color::from_rgb(0.0, 0.0, 0.0),
+                        background: Background::Color(Color::from_rgb(1.0, 1.0, 1.0)),
+                    })
+                    .padding(10),
+                )
+                .padding([10, 0]),
             )
         } else {
             None
         };
 
-        container(
-            Column::new()
-                .push(
-                    Row::new()
-                        .push(http_method_dropdown)
-                        .push(url_input)
-                        .push(submit_btn)
-                        .spacing(10),
-                )
-                .push(request_body)
-                .push_maybe(error_msg)
-                .push_maybe(response_view_dropdown)
-                .push_maybe(response_text)
-                .width(1000)
-                .padding(20),
-        )
-        .center_x(Length::Fill)
-        .into()
+    fn response_metadata(content: &str, status: u16) -> Element<'static, Message> {
+        Row::new()
+            .push(
+                text(format!(
+                    "Status: {} • Size: {}B",
+                    status,
+                    content.as_bytes().len()
+                ))
+                .color(if status == 200 {
+                    Color::from_rgb(0.5, 1.0, 0.5)
+                } else {
+                    Color::from_rgb(1.0, 0.5, 0.5)
+                }),
+            )
+            .padding([10, 0])
+            .into()
     }
+
+    let response_text = if !state.response.headers.is_empty() || !state.response.body.is_empty() {
+        Some(
+            Column::new().push(match state.response_view_selected {
+                ResponseView::Headers => Column::new()
+                    .push(response_metadata(
+                        &state.response.headers,
+                        state.response.status,
+                    ))
+                    .push(
+                        text_editor(&state.response_headers_content)
+                            .on_action(Message::ResponseHeadersAction)
+                            .font(Font::MONOSPACE),
+                    ),
+                ResponseView::Body => Column::new()
+                    .push(response_metadata(
+                        &state.response.body,
+                        state.response.status,
+                    ))
+                    .push(
+                        text_editor(&state.response_body_content)
+                            .on_action(Message::ResponseBodyAction)
+                            .font(Font::MONOSPACE),
+                    ),
+            }),
+        )
+    } else {
+        None
+    };
+
+    container(
+        Column::new()
+            .push(
+                Row::new()
+                    .push(http_method_dropdown)
+                    .push(url_input)
+                    .push(submit_btn),
+            )
+            .push(request_body)
+            .push_maybe(error_msg)
+            .push_maybe(response_view_dropdown)
+            .push_maybe(response_text)
+            .width(1000)
+            .padding(20),
+    )
+    .center_x(Length::Fill)
+    .into()
 }
 
 async fn send_request(method: HttpMethod, url: String, body: String) -> Option<Response> {

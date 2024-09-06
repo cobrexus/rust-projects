@@ -16,8 +16,8 @@ pub fn main() -> iced::Result {
                 String::from("HTTP Lens Theme"),
                 theme::Palette {
                     background: Color::from_rgb(0.0, 0.0, 0.0),
-                    text: Color::from_rgb(0.9, 0.9, 0.9),
-                    primary: Color::from_rgb(0.9, 0.9, 0.9),
+                    text: Color::from_rgb(1.0, 1.0, 1.0),
+                    primary: Color::from_rgb(1.0, 1.0, 1.0),
                     success: Color::from_rgb(0.5, 1.0, 0.5),
                     danger: Color::from_rgb(1.0, 0.5, 0.5),
                 },
@@ -25,7 +25,7 @@ pub fn main() -> iced::Result {
         })
         .style(|_, _| Appearance {
             background_color: Color::from_rgb(0.0, 0.0, 0.0),
-            text_color: Color::from_rgb(0.9, 0.9, 0.9),
+            text_color: Color::from_rgb(1.0, 1.0, 1.0),
         })
         .run()
 }
@@ -153,7 +153,7 @@ fn view(state: &State) -> Element<Message> {
         Some(&state.selected_http_method),
         Message::HttpMethodSelected,
     )
-    .style(|_, _| pick_list::Style {
+    .style(|_, status| pick_list::Style {
         border: Border {
             radius: border::Radius {
                 top_left: 10.0,
@@ -165,9 +165,13 @@ fn view(state: &State) -> Element<Message> {
             width: 0.0,
         },
         text_color: Color::from_rgb(0.0, 0.0, 0.0),
-        placeholder_color: Color::from_rgb(0.9, 0.9, 0.9),
+        placeholder_color: Color::from_rgb(1.0, 1.0, 1.0),
         handle_color: Color::from_rgb(0.0, 0.0, 0.0),
-        background: Background::Color(Color::from_rgb(0.9, 0.9, 0.9)),
+        background: if status == pick_list::Status::Hovered {
+            Background::Color(Color::from_rgb(0.5, 0.5, 0.5))
+        } else {
+            Background::Color(Color::from_rgb(1.0, 1.0, 1.0))
+        },
     })
     .padding(10);
 
@@ -178,7 +182,7 @@ fn view(state: &State) -> Element<Message> {
         .style(|_, _| text_input::Style {
             background: Background::Color(Color::TRANSPARENT),
             border: Border {
-                color: Color::from_rgb(0.9, 0.9, 0.9),
+                color: Color::from_rgb(1.0, 1.0, 1.0),
                 width: 1.0,
                 radius: border::Radius {
                     top_left: 0.0,
@@ -189,59 +193,71 @@ fn view(state: &State) -> Element<Message> {
             },
             icon: Default::default(),
             placeholder: Color::from_rgb(0.5, 0.5, 0.5),
-            value: Color::from_rgb(0.9, 0.9, 0.9),
+            value: Color::from_rgb(1.0, 1.0, 1.0),
             selection: Color::from_rgb(0.5, 0.5, 0.5),
         });
 
-    let submit_btn: Element<Message> = if state.loading {
-        button("Loading...")
-            .padding(10)
-            .on_press_maybe(None)
-            .style(|_, _| button::Style {
-                border: Border {
-                    radius: border::Radius {
-                        top_left: 0.0,
-                        top_right: 10.0,
-                        bottom_right: 10.0,
-                        bottom_left: 0.0,
-                    },
-                    color: Color::TRANSPARENT,
-                    width: 0.0,
-                },
-                text_color: Color::from_rgb(0.0, 0.0, 0.0),
-                background: Some(Background::Color(Color::from_rgb(0.5, 0.5, 0.5))),
-                shadow: Shadow {
-                    color: Color::TRANSPARENT,
-                    offset: Vector::new(0.0, 0.0),
-                    blur_radius: 0.0,
-                },
-            })
-            .into()
+    let submit_btn: Element<Message> = button(if state.loading {
+        "Loading..."
     } else {
-        button("Send Request")
-            .padding(10)
-            .on_press(Message::UrlSubmitted)
-            .style(|_, _| button::Style {
-                border: Border {
-                    radius: border::Radius {
-                        top_left: 0.0,
-                        top_right: 10.0,
-                        bottom_right: 10.0,
-                        bottom_left: 0.0,
-                    },
-                    color: Color::TRANSPARENT,
-                    width: 0.0,
+        "Send Request"
+    })
+    .padding(10)
+    .on_press_maybe(if state.loading {
+        None
+    } else {
+        Some(Message::UrlSubmitted)
+    })
+    .style(|_, status| button::Style {
+        border: Border {
+            radius: border::Radius {
+                top_left: 0.0,
+                top_right: 10.0,
+                bottom_right: 10.0,
+                bottom_left: 0.0,
+            },
+            color: Color::TRANSPARENT,
+            width: 0.0,
+        },
+        text_color: Color::from_rgb(0.0, 0.0, 0.0),
+        background: if status == button::Status::Hovered {
+            Some(Background::Color(Color::from_rgb(0.5, 0.5, 0.5)))
+        } else {
+            Some(Background::Color(Color::from_rgb(1.0, 1.0, 1.0)))
+        },
+        shadow: Shadow {
+            color: Color::TRANSPARENT,
+            offset: Vector::new(0.0, 0.0),
+            blur_radius: 0.0,
+        },
+    })
+    .into();
+
+    fn text_editor_style(_theme: &Theme, status: text_editor::Status) -> text_editor::Style {
+        text_editor::Style {
+            border: Border {
+                radius: border::Radius {
+                    top_left: 10.0,
+                    top_right: 10.0,
+                    bottom_right: 10.0,
+                    bottom_left: 10.0,
                 },
-                text_color: Color::from_rgb(0.0, 0.0, 0.0),
-                background: Some(Background::Color(Color::from_rgb(0.9, 0.9, 0.9))),
-                shadow: Shadow {
-                    color: Color::TRANSPARENT,
-                    offset: Vector::new(0.0, 0.0),
-                    blur_radius: 0.0,
+                color: if status == text_editor::Status::Hovered
+                    || status == text_editor::Status::Focused
+                {
+                    Color::from_rgb(1.0, 1.0, 1.0)
+                } else {
+                    Color::from_rgb(0.5, 0.5, 0.5)
                 },
-            })
-            .into()
-    };
+                width: 1.0,
+            },
+            background: Background::Color(Color::TRANSPARENT),
+            icon: Default::default(),
+            placeholder: Color::from_rgb(0.5, 0.5, 0.5),
+            value: Color::from_rgb(1.0, 1.0, 1.0),
+            selection: Color::from_rgb(0.5, 0.5, 0.5),
+        }
+    }
 
     let request_body = Column::new()
         .push(
@@ -249,23 +265,7 @@ fn view(state: &State) -> Element<Message> {
                 .placeholder("Request body")
                 .on_action(Message::RequestBodyEdited)
                 .font(Font::MONOSPACE)
-                .style(|_, _| text_editor::Style {
-                    border: Border {
-                        radius: border::Radius {
-                            top_left: 10.0,
-                            top_right: 10.0,
-                            bottom_right: 10.0,
-                            bottom_left: 10.0,
-                        },
-                        color: Color::from_rgb(0.9, 0.9, 0.9),
-                        width: 1.0,
-                    },
-                    background: Background::Color(Color::TRANSPARENT),
-                    icon: Default::default(),
-                    placeholder: Color::from_rgb(0.5, 0.5, 0.5),
-                    value: Color::from_rgb(0.9, 0.9, 0.9),
-                    selection: Color::from_rgb(0.5, 0.5, 0.5),
-                })
+                .style(text_editor_style)
                 .padding(10),
         )
         .padding([10, 0]);
@@ -299,9 +299,9 @@ fn view(state: &State) -> Element<Message> {
                             width: 0.0,
                         },
                         text_color: Color::from_rgb(0.0, 0.0, 0.0),
-                        placeholder_color: Color::from_rgb(0.9, 0.9, 0.9),
+                        placeholder_color: Color::from_rgb(1.0, 1.0, 1.0),
                         handle_color: Color::from_rgb(0.0, 0.0, 0.0),
-                        background: Background::Color(Color::from_rgb(0.9, 0.9, 0.9)),
+                        background: Background::Color(Color::from_rgb(1.0, 1.0, 1.0)),
                     })
                     .padding(10),
                 )
@@ -341,23 +341,7 @@ fn view(state: &State) -> Element<Message> {
                         text_editor(&state.response_headers_content)
                             .on_action(Message::ResponseHeadersAction)
                             .font(Font::MONOSPACE)
-                            .style(|_, _| text_editor::Style {
-                                border: Border {
-                                    radius: border::Radius {
-                                        top_left: 10.0,
-                                        top_right: 10.0,
-                                        bottom_right: 10.0,
-                                        bottom_left: 10.0,
-                                    },
-                                    color: Color::from_rgb(0.5, 0.5, 0.5),
-                                    width: 1.0,
-                                },
-                                background: Background::Color(Color::TRANSPARENT),
-                                icon: Default::default(),
-                                placeholder: Color::from_rgb(0.5, 0.5, 0.5),
-                                value: Color::from_rgb(0.9, 0.9, 0.9),
-                                selection: Color::from_rgb(0.5, 0.5, 0.5),
-                            })
+                            .style(text_editor_style)
                             .padding(10),
                     ),
                 ResponseView::Body => Column::new()
@@ -369,23 +353,7 @@ fn view(state: &State) -> Element<Message> {
                         text_editor(&state.response_body_content)
                             .on_action(Message::ResponseBodyAction)
                             .font(Font::MONOSPACE)
-                            .style(|_, _| text_editor::Style {
-                                border: Border {
-                                    radius: border::Radius {
-                                        top_left: 10.0,
-                                        top_right: 10.0,
-                                        bottom_right: 10.0,
-                                        bottom_left: 10.0,
-                                    },
-                                    color: Color::from_rgb(0.5, 0.5, 0.5),
-                                    width: 1.0,
-                                },
-                                background: Background::Color(Color::TRANSPARENT),
-                                icon: Default::default(),
-                                placeholder: Color::from_rgb(0.5, 0.5, 0.5),
-                                value: Color::from_rgb(0.9, 0.9, 0.9),
-                                selection: Color::from_rgb(0.5, 0.5, 0.5),
-                            })
+                            .style(text_editor_style)
                             .padding(10),
                     ),
             }),

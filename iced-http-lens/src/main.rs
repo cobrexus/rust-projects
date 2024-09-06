@@ -16,8 +16,8 @@ pub fn main() -> iced::Result {
                 String::from("HTTP Lens Theme"),
                 theme::Palette {
                     background: Color::from_rgb(0.0, 0.0, 0.0),
-                    text: Color::from_rgb(1.0, 1.0, 1.0),
-                    primary: Color::from_rgb(1.0, 1.0, 1.0),
+                    text: Color::from_rgb(0.9, 0.9, 0.9),
+                    primary: Color::from_rgb(0.9, 0.9, 0.9),
                     success: Color::from_rgb(0.5, 1.0, 0.5),
                     danger: Color::from_rgb(1.0, 0.5, 0.5),
                 },
@@ -25,7 +25,7 @@ pub fn main() -> iced::Result {
         })
         .style(|_, _| Appearance {
             background_color: Color::from_rgb(0.0, 0.0, 0.0),
-            text_color: Color::from_rgb(1.0, 1.0, 1.0),
+            text_color: Color::from_rgb(0.9, 0.9, 0.9),
         })
         .run()
 }
@@ -165,9 +165,9 @@ fn view(state: &State) -> Element<Message> {
             width: 0.0,
         },
         text_color: Color::from_rgb(0.0, 0.0, 0.0),
-        placeholder_color: Color::from_rgb(1.0, 1.0, 1.0),
+        placeholder_color: Color::from_rgb(0.9, 0.9, 0.9),
         handle_color: Color::from_rgb(0.0, 0.0, 0.0),
-        background: Background::Color(Color::from_rgb(1.0, 1.0, 1.0)),
+        background: Background::Color(Color::from_rgb(0.9, 0.9, 0.9)),
     })
     .padding(10);
 
@@ -178,7 +178,7 @@ fn view(state: &State) -> Element<Message> {
         .style(|_, _| text_input::Style {
             background: Background::Color(Color::TRANSPARENT),
             border: Border {
-                color: Color::from_rgb(1.0, 1.0, 1.0),
+                color: Color::from_rgb(0.9, 0.9, 0.9),
                 width: 1.0,
                 radius: border::Radius {
                     top_left: 0.0,
@@ -189,7 +189,7 @@ fn view(state: &State) -> Element<Message> {
             },
             icon: Default::default(),
             placeholder: Color::from_rgb(0.5, 0.5, 0.5),
-            value: Color::from_rgb(1.0, 1.0, 1.0),
+            value: Color::from_rgb(0.9, 0.9, 0.9),
             selection: Color::from_rgb(0.5, 0.5, 0.5),
         });
 
@@ -233,7 +233,7 @@ fn view(state: &State) -> Element<Message> {
                     width: 0.0,
                 },
                 text_color: Color::from_rgb(0.0, 0.0, 0.0),
-                background: Some(Background::Color(Color::from_rgb(1.0, 1.0, 1.0))),
+                background: Some(Background::Color(Color::from_rgb(0.9, 0.9, 0.9))),
                 shadow: Shadow {
                     color: Color::TRANSPARENT,
                     offset: Vector::new(0.0, 0.0),
@@ -244,11 +244,29 @@ fn view(state: &State) -> Element<Message> {
     };
 
     let request_body = Column::new()
-        .push(container("Request body").padding([10, 0]))
         .push(
             text_editor(&state.request_body)
+                .placeholder("Request body")
                 .on_action(Message::RequestBodyEdited)
-                .font(Font::MONOSPACE),
+                .font(Font::MONOSPACE)
+                .style(|_, _| text_editor::Style {
+                    border: Border {
+                        radius: border::Radius {
+                            top_left: 10.0,
+                            top_right: 10.0,
+                            bottom_right: 10.0,
+                            bottom_left: 10.0,
+                        },
+                        color: Color::from_rgb(0.9, 0.9, 0.9),
+                        width: 1.0,
+                    },
+                    background: Background::Color(Color::TRANSPARENT),
+                    icon: Default::default(),
+                    placeholder: Color::from_rgb(0.5, 0.5, 0.5),
+                    value: Color::from_rgb(0.9, 0.9, 0.9),
+                    selection: Color::from_rgb(0.5, 0.5, 0.5),
+                })
+                .padding(10),
         )
         .padding([10, 0]);
 
@@ -281,9 +299,9 @@ fn view(state: &State) -> Element<Message> {
                             width: 0.0,
                         },
                         text_color: Color::from_rgb(0.0, 0.0, 0.0),
-                        placeholder_color: Color::from_rgb(1.0, 1.0, 1.0),
+                        placeholder_color: Color::from_rgb(0.9, 0.9, 0.9),
                         handle_color: Color::from_rgb(0.0, 0.0, 0.0),
-                        background: Background::Color(Color::from_rgb(1.0, 1.0, 1.0)),
+                        background: Background::Color(Color::from_rgb(0.9, 0.9, 0.9)),
                     })
                     .padding(10),
                 )
@@ -307,7 +325,7 @@ fn view(state: &State) -> Element<Message> {
                     Color::from_rgb(1.0, 0.5, 0.5)
                 }),
             )
-            .padding([10, 0])
+            .padding([20, 0])
             .into()
     }
 
@@ -322,7 +340,25 @@ fn view(state: &State) -> Element<Message> {
                     .push(
                         text_editor(&state.response_headers_content)
                             .on_action(Message::ResponseHeadersAction)
-                            .font(Font::MONOSPACE),
+                            .font(Font::MONOSPACE)
+                            .style(|_, _| text_editor::Style {
+                                border: Border {
+                                    radius: border::Radius {
+                                        top_left: 10.0,
+                                        top_right: 10.0,
+                                        bottom_right: 10.0,
+                                        bottom_left: 10.0,
+                                    },
+                                    color: Color::from_rgb(0.5, 0.5, 0.5),
+                                    width: 1.0,
+                                },
+                                background: Background::Color(Color::TRANSPARENT),
+                                icon: Default::default(),
+                                placeholder: Color::from_rgb(0.5, 0.5, 0.5),
+                                value: Color::from_rgb(0.9, 0.9, 0.9),
+                                selection: Color::from_rgb(0.5, 0.5, 0.5),
+                            })
+                            .padding(10),
                     ),
                 ResponseView::Body => Column::new()
                     .push(response_metadata(
@@ -332,7 +368,25 @@ fn view(state: &State) -> Element<Message> {
                     .push(
                         text_editor(&state.response_body_content)
                             .on_action(Message::ResponseBodyAction)
-                            .font(Font::MONOSPACE),
+                            .font(Font::MONOSPACE)
+                            .style(|_, _| text_editor::Style {
+                                border: Border {
+                                    radius: border::Radius {
+                                        top_left: 10.0,
+                                        top_right: 10.0,
+                                        bottom_right: 10.0,
+                                        bottom_left: 10.0,
+                                    },
+                                    color: Color::from_rgb(0.5, 0.5, 0.5),
+                                    width: 1.0,
+                                },
+                                background: Background::Color(Color::TRANSPARENT),
+                                icon: Default::default(),
+                                placeholder: Color::from_rgb(0.5, 0.5, 0.5),
+                                value: Color::from_rgb(0.9, 0.9, 0.9),
+                                selection: Color::from_rgb(0.5, 0.5, 0.5),
+                            })
+                            .padding(10),
                     ),
             }),
         )

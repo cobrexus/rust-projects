@@ -1,7 +1,0 @@
-[package]
-name = "iced-tabs"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-iced = { git = "https://github.com/iced-rs/iced", version = "0.13.0-dev" }

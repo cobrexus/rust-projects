@@ -1,0 +1,15 @@
+[package]
+name = "dioxus-http-lens"
+version = "0.1.0"
+authors = ["bzr <aryanbeezadhur@gmail.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+dioxus = { version = "0.5", features = ["desktop"] }
+
+# Debug
+dioxus-logger = "0.5.1"
+reqwest = "0.12.7"

@@ -1,7 +1,7 @@
 use iced::{
     border,
     daemon::Appearance,
-    theme,
+    overlay, theme,
     widget::{button, container, pick_list, text, text_editor, text_input, Column, Row},
     Background, Border, Color, Element, Font, Length, Shadow, Task, Theme, Vector,
 };
@@ -46,12 +46,12 @@ struct HttpLens {
 #[derive(Default, Debug, Clone, PartialEq, Display, VariantArray)]
 enum HttpMethod {
     #[default]
-    Get,
-    Post,
-    Put,
-    Delete,
-    Head,
-    Patch,
+    GET,
+    POST,
+    PUT,
+    DELETE,
+    HEAD,
+    PATCH,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -174,6 +174,22 @@ impl HttpLens {
                 Background::Color(Color::from_rgb(1.0, 1.0, 1.0))
             },
         })
+        .menu_style(|_| overlay::menu::Style {
+            background: Background::Color(Color::from_rgb(0.0, 0.0, 0.0)),
+            border: Border {
+                radius: border::Radius {
+                    top_left: 10.0,
+                    top_right: 10.0,
+                    bottom_right: 10.0,
+                    bottom_left: 10.0,
+                },
+                color: Color::TRANSPARENT,
+                width: 0.0,
+            },
+            text_color: Color::from_rgb(1.0, 1.0, 1.0),
+            selected_text_color: Color::from_rgb(1.0, 1.0, 1.0),
+            selected_background: Background::Color(Color::from_rgb(0.5, 0.5, 0.5)),
+        })
         .padding(10);
 
         let url_input = text_input("Enter URL", &self.url_entered)
@@ -288,7 +304,7 @@ impl HttpLens {
                             Some(&self.response_view_selected),
                             Message::ResponseViewSelected,
                         )
-                        .style(|_, _| pick_list::Style {
+                        .style(|_, status| pick_list::Style {
                             border: Border {
                                 radius: border::Radius {
                                     top_left: 10.0,
@@ -302,7 +318,27 @@ impl HttpLens {
                             text_color: Color::from_rgb(0.0, 0.0, 0.0),
                             placeholder_color: Color::from_rgb(1.0, 1.0, 1.0),
                             handle_color: Color::from_rgb(0.0, 0.0, 0.0),
-                            background: Background::Color(Color::from_rgb(1.0, 1.0, 1.0)),
+                            background: if status == pick_list::Status::Hovered {
+                                Background::Color(Color::from_rgb(0.5, 0.5, 0.5))
+                            } else {
+                                Background::Color(Color::from_rgb(1.0, 1.0, 1.0))
+                            },
+                        })
+                        .menu_style(|_| overlay::menu::Style {
+                            background: Background::Color(Color::from_rgb(0.0, 0.0, 0.0)),
+                            border: Border {
+                                radius: border::Radius {
+                                    top_left: 10.0,
+                                    top_right: 10.0,
+                                    bottom_right: 10.0,
+                                    bottom_left: 10.0,
+                                },
+                                color: Color::TRANSPARENT,
+                                width: 0.0,
+                            },
+                            text_color: Color::from_rgb(1.0, 1.0, 1.0),
+                            selected_text_color: Color::from_rgb(1.0, 1.0, 1.0),
+                            selected_background: Background::Color(Color::from_rgb(0.5, 0.5, 0.5)),
                         })
                         .padding(10),
                     )
@@ -383,12 +419,12 @@ async fn send_request(method: HttpMethod, url: String, body: String) -> Option<R
     let client = reqwest::Client::new();
 
     let response = match method {
-        HttpMethod::Get => client.get(url),
-        HttpMethod::Post => client.post(url),
-        HttpMethod::Put => client.put(url),
-        HttpMethod::Delete => client.delete(url),
-        HttpMethod::Head => client.head(url),
-        HttpMethod::Patch => client.patch(url),
+        HttpMethod::GET => client.get(url),
+        HttpMethod::POST => client.post(url),
+        HttpMethod::PUT => client.put(url),
+        HttpMethod::DELETE => client.delete(url),
+        HttpMethod::HEAD => client.head(url),
+        HttpMethod::PATCH => client.patch(url),
     };
 
     if let Ok(r) = response.body(body).send().await {

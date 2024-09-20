@@ -1,11 +1,23 @@
 use iced::{
+    theme,
     widget::{button, column, container, row, text},
-    Element, Length, Theme,
+    Color, Element, Length, Theme,
 };
 
 pub fn main() -> iced::Result {
     iced::application("Calculator - Iced", Calculator::update, Calculator::view)
-        .theme(|_| Theme::GruvboxDark)
+        .theme(|_| {
+            Theme::custom(
+                String::from("Iced Calculator Theme"),
+                theme::Palette {
+                    background: Color::from_rgb(0.0, 0.0, 0.0),
+                    text: Color::from_rgb(1.0, 1.0, 1.0),
+                    primary: Color::from_rgb(1.0, 1.0, 1.0),
+                    success: Color::from_rgb(0.5, 1.0, 0.5),
+                    danger: Color::from_rgb(1.0, 0.5, 0.5),
+                },
+            )
+        })
         .run()
 }
 

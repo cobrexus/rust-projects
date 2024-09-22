@@ -5,7 +5,7 @@ use iced::{
     widget::{button, container, pick_list, text, text_editor, text_input, Column, Row},
     Background, Border, Color, Element, Font, Length, Shadow, Task, Theme, Vector,
 };
-use reqwest;
+use std::fmt::Write;
 use strum::VariantArray;
 use strum_macros::{Display, VariantArray};
 
@@ -428,11 +428,10 @@ async fn send_request(method: HttpMethod, url: String, body: String) -> Option<R
     };
 
     if let Ok(r) = response.body(body).send().await {
-        let headers = r
-            .headers()
-            .iter()
-            .map(|header| format!("{}: {}\n", header.0.as_str(), header.1.to_str().unwrap()))
-            .collect::<String>();
+        let headers = r.headers().iter().fold(String::new(), |mut acc, h| {
+            writeln!(acc, "{}: {}", h.0.as_str(), h.1.to_str().unwrap()).unwrap();
+            acc
+        });
 
         let status = r.status().as_u16().to_owned();
 

@@ -1,34 +1,31 @@
 // Ungolfed solution to https://codegolf.stackexchange.com/q/275630/94032
 
 use std::io::{stdin, stdout, Write};
-use termion::{event::Key, input::TermRead, raw::IntoRawMode};
+use termion::{
+    clear,
+    cursor::Left,
+    event::Key::{Backspace, Char},
+    input::TermRead,
+    raw::IntoRawMode,
+};
 fn main() {
-    let a = stdin();
-    let mut b = stdout().into_raw_mode().unwrap();
-    let mut s = "".to_owned();
-    for c in a.keys() {
-        match c.unwrap() {
-            Key::Esc => break,
-            Key::Char(k) => {
-                if "0123456789".contains(k) {
-                    write!(b, "*").unwrap();
-                    s.push(k)
+    let (mut o, mut l) = (stdout().into_raw_mode().unwrap(), 0);
+    for k in stdin().keys() {
+        match k.unwrap() {
+            Char(c) => {
+                if c.is_digit(10) {
+                    write!(o, "*").unwrap();
+                    l += 1
                 }
             }
-            Key::Backspace => {
-                write!(
-                    b,
-                    "{}{}",
-                    termion::cursor::Left(1),
-                    termion::clear::AfterCursor
-                )
-                .unwrap();
-                s = s[..s.len() - 1].to_string()
+            Backspace => {
+                write!(o, "{}{}", Left(1), clear::AfterCursor).unwrap();
+                l -= 1
             }
             _ => (),
         }
-        b.flush().unwrap();
-        if s.len() > 3 {
+        o.flush().unwrap();
+        if l > 3 {
             break;
         }
     }

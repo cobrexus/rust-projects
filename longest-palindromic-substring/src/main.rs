@@ -1,7 +1,7 @@
 // Solution to https://leetcode.com/problems/longest-palindromic-substring/description/
 
 fn main() {
-    println!("{}", Solution::longest_palindrome("c".to_string()));
+    println!("{}", Solution::longest_palindrome("babad".to_string()));
 }
 
 struct Solution;
@@ -12,36 +12,49 @@ impl Solution {
         let mut lower_bound = 0;
         let mut upper_bound = 0;
 
-        for i in 0..s.len() {
-            'a: for j in i + 1..s.len() {
-                if j - i < upper_bound - lower_bound {
-                    continue 'a;
+        for i in 0..s.len() - 1 {
+            // odd palindrome
+
+            let mut l = i;
+            let mut r = i;
+
+            while s[l] == s[r] {
+                if r - l > upper_bound - lower_bound {
+                    upper_bound = r;
+                    lower_bound = l;
                 }
 
-                let mut k = i;
-                let mut l = j;
-
-                while k <= l {
-                    if s[k] != s[l] {
-                        continue 'a;
-                    }
-
-                    k += 1;
-                    l -= 1;
+                if l == 0 || r == s.len() - 1 {
+                    break;
                 }
 
-                lower_bound = i;
-                upper_bound = j;
+                l -= 1;
+                r += 1;
+            }
+
+            // even palindrome
+
+            let mut l = i;
+            let mut r = i + 1;
+
+            while s[l] == s[r] {
+                if r - l > upper_bound - lower_bound {
+                    upper_bound = r;
+                    lower_bound = l;
+                }
+
+                if l == 0 || r == s.len() - 1 {
+                    break;
+                }
+
+                l -= 1;
+                r += 1;
             }
         }
 
-        if upper_bound == 0 {
-            (s[0] as char).to_string()
-        } else {
-            s[lower_bound..=upper_bound]
-                .iter()
-                .map(|b| *b as char)
-                .collect::<String>()
-        }
+        s[lower_bound..=upper_bound]
+            .iter()
+            .map(|b| *b as char)
+            .collect::<String>()
     }
 }

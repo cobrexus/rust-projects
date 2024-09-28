@@ -12,6 +12,18 @@ impl Solution {
         let mut lower_bound = 0;
         let mut upper_bound = 0;
 
+        let mut all_same = true;
+
+        for i in 1..s.len() {
+            if s[i] != s[0] {
+                all_same = false;
+            }
+        }
+
+        if all_same {
+            return s.iter().map(|b| *b as char).collect::<String>();
+        }
+
         for i in 0..s.len() - 1 {
             // odd palindrome
 

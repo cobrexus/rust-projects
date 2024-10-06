@@ -1,20 +1,24 @@
 use iced::{
-    theme,
-    widget::{button, column, container, row, text},
-    Color, Element, Length, Theme,
+    color, theme,
+    widget::{
+        button, column, container, row, scrollable,
+        scrollable::{Direction, Scrollbar},
+        text,
+    },
+    Element, Length, Theme,
 };
 
 pub fn main() -> iced::Result {
     iced::application("Calculator - Iced", Calculator::update, Calculator::view)
         .theme(|_| {
             Theme::custom(
-                String::from("Iced Calculator Theme"),
+                "Iced Calculator Theme".to_string(),
                 theme::Palette {
-                    background: Color::from_rgb(0.0, 0.0, 0.0),
-                    text: Color::from_rgb(1.0, 1.0, 1.0),
-                    primary: Color::from_rgb(1.0, 1.0, 1.0),
-                    success: Color::from_rgb(0.5, 1.0, 0.5),
-                    danger: Color::from_rgb(1.0, 0.5, 0.5),
+                    background: color!(0x000000),
+                    text: color!(0xFFFFFF),
+                    primary: color!(0xFFFFFF),
+                    success: color!(0x88FF88),
+                    danger: color!(0xFF8888),
                 },
             )
         })
@@ -47,23 +51,6 @@ enum Num {
     Seven,
     Eight,
     Nine,
-}
-
-impl std::fmt::Display for Num {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Num::Zero => write!(f, "0"),
-            Num::One => write!(f, "1"),
-            Num::Two => write!(f, "2"),
-            Num::Three => write!(f, "3"),
-            Num::Four => write!(f, "4"),
-            Num::Five => write!(f, "5"),
-            Num::Six => write!(f, "6"),
-            Num::Seven => write!(f, "7"),
-            Num::Eight => write!(f, "8"),
-            Num::Nine => write!(f, "9"),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -127,9 +114,9 @@ impl Calculator {
             }
             Message::NumBtnPressed(num) => {
                 if self.editing_display_2 {
-                    self.display_2 = format!("{}{}", self.display_2, num).parse().unwrap();
+                    self.display_2 = format!("{}{}", self.display_2, num as i32).parse().unwrap();
                 } else {
-                    self.display_1 = format!("{}{}", self.display_1, num).parse().unwrap();
+                    self.display_1 = format!("{}{}", self.display_1, num as i32).parse().unwrap();
                 }
             }
         }
@@ -138,10 +125,14 @@ impl Calculator {
     fn view(&self) -> Element<Message> {
         container(
             column![
-                text(self.display_2).size(40),
+                scrollable(text(self.display_2).size(50))
+                    .direction(Direction::Horizontal(Scrollbar::new()))
+                    .width(210),
                 row![
-                    text(self.display_1).size(50),
-                    text(self.current_op.to_string())
+                    scrollable(text(self.display_1).size(50))
+                        .direction(Direction::Horizontal(Scrollbar::new()))
+                        .width(210),
+                    text(self.current_op.to_string()).size(50)
                 ],
                 row![
                     button(text("C").center())

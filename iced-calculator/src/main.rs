@@ -56,6 +56,7 @@ enum Num {
 #[derive(Debug, Clone, PartialEq, Default)]
 enum Op {
     #[default]
+    None,
     Add,
     Sub,
     Mul,
@@ -67,6 +68,7 @@ enum Op {
 impl std::fmt::Display for Op {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Op::None => write!(f, " "),
             Op::Add => write!(f, "+"),
             Op::Sub => write!(f, "−"),
             Op::Mul => write!(f, "×"),
@@ -79,39 +81,43 @@ impl std::fmt::Display for Op {
 impl Calculator {
     fn update(&mut self, message: Message) {
         match message {
-            Message::OpBtnPressed(Op::Clear) => {
-                self.display_1 = 0.0;
-                self.display_2 = 0.0;
-                self.editing_display_2 = false;
-            }
-            Message::OpBtnPressed(Op::Eq) => {
-                self.editing_display_2 = false;
-
-                match self.current_op {
-                    Op::Add => {
-                        self.display_1 += self.display_2;
-                        self.display_2 = 0.0;
-                    }
-                    Op::Sub => {
-                        self.display_1 -= self.display_2;
-                        self.display_2 = 0.0;
-                    }
-                    Op::Mul => {
-                        self.display_1 *= self.display_2;
-                        self.display_2 = 0.0;
-                    }
-                    Op::Div => {
-                        self.display_1 /= self.display_2;
-                        self.display_2 = 0.0;
-                    }
-                    Op::Clear => unreachable!(),
-                    Op::Eq => unreachable!(),
+            Message::OpBtnPressed(op) => match op {
+                Op::Clear => {
+                    self.display_1 = 0.0;
+                    self.display_2 = 0.0;
+                    self.current_op = Op::default();
+                    self.editing_display_2 = false;
                 }
-            }
-            Message::OpBtnPressed(op) => {
-                self.current_op = op;
-                self.editing_display_2 = true;
-            }
+                Op::Eq => {
+                    self.editing_display_2 = false;
+
+                    match self.current_op {
+                        Op::Add => {
+                            self.display_1 += self.display_2;
+                            self.display_2 = 0.0;
+                        }
+                        Op::Sub => {
+                            self.display_1 -= self.display_2;
+                            self.display_2 = 0.0;
+                        }
+                        Op::Mul => {
+                            self.display_1 *= self.display_2;
+                            self.display_2 = 0.0;
+                        }
+                        Op::Div => {
+                            self.display_1 /= self.display_2;
+                            self.display_2 = 0.0;
+                        }
+                        Op::None => (),
+                        Op::Clear => unreachable!(),
+                        Op::Eq => unreachable!(),
+                    }
+                }
+                op => {
+                    self.current_op = op;
+                    self.editing_display_2 = true;
+                }
+            },
             Message::NumBtnPressed(num) => {
                 if self.editing_display_2 {
                     self.display_2 = format!("{}{}", self.display_2, num as i32).parse().unwrap();
@@ -125,15 +131,15 @@ impl Calculator {
     fn view(&self) -> Element<Message> {
         container(
             column![
-                scrollable(text(self.display_2).size(50))
-                    .direction(Direction::Horizontal(Scrollbar::new()))
-                    .width(210),
                 row![
                     scrollable(text(self.display_1).size(50))
                         .direction(Direction::Horizontal(Scrollbar::new()))
                         .width(210),
                     text(self.current_op.to_string()).size(50)
                 ],
+                scrollable(text(self.display_2).size(50))
+                    .direction(Direction::Horizontal(Scrollbar::new()))
+                    .width(210),
                 row![
                     button(text("C").center())
                         .on_press(Message::OpBtnPressed(Op::Clear))

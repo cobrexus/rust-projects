@@ -1,14 +1,15 @@
 use iced::{
-    border, color, daemon,
+    application, border, color, daemon,
     widget::{
         button, checkbox, column, container, keyed_column, mouse_area, row, text_input,
         vertical_space,
     },
-    Background, Border, Color, Element, Length, Shadow,
+    Background, Border, Color, Element, Font, Length, Pixels, Result, Settings, Shadow,
 };
 
-pub fn main() -> iced::Result {
-    iced::application("Iced Todos", App::update, App::view)
+pub fn main() -> Result {
+    application("Iced Todos", App::update, App::view)
+        .settings(App::settings())
         .style(|_, _| daemon::Appearance {
             background_color: color!(0x000000),
             text_color: color!(0xFFFFFF),
@@ -38,6 +39,18 @@ struct Item {
 }
 
 impl App {
+    fn settings() -> Settings {
+        Settings {
+            id: None,
+            fonts: vec![include_bytes!("../JetBrainsMono-Regular.ttf")
+                .as_slice()
+                .into()],
+            default_font: Font::with_name("JetBrains Mono"),
+            default_text_size: Pixels(15.0),
+            antialiasing: Default::default(),
+        }
+    }
+
     fn update(&mut self, message: Message) {
         match message {
             Message::NewItemInputValueChanged(s) => {

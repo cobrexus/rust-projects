@@ -6,7 +6,6 @@ use iced::{
     },
     Background, Border, Color, Element, Font, Length, Pixels, Result, Settings, Shadow, Theme,
 };
-use std::collections::HashMap;
 
 pub fn main() -> Result {
     application("Iced Todos", App::update, App::view)
@@ -21,7 +20,7 @@ pub fn main() -> Result {
 #[derive(Default)]
 struct App {
     new_item_input_value: String,
-    items: HashMap<usize, Item>,
+    items: Vec<Item>,
     next_item_id: usize,
 }
 
@@ -29,7 +28,7 @@ struct App {
 enum Message {
     NewItemInputValueChanged(String),
     NewItemInputSubmitted,
-    ItemToggled(usize),
+    ItemToggled(usize, bool),
     DeleteItem(usize),
     EditItem(usize),
     ItemEdited(usize, String),
@@ -63,34 +62,46 @@ impl App {
                 self.new_item_input_value = s;
             }
             Message::NewItemInputSubmitted => {
-                self.items.insert(
-                    self.next_item_id,
-                    Item {
-                        id: self.next_item_id,
-                        content: self.new_item_input_value.clone(),
-                        done: false,
-                        editing: false,
-                    },
-                );
+                self.items.push(Item {
+                    id: self.next_item_id,
+                    content: self.new_item_input_value.clone(),
+                    done: false,
+                    editing: false,
+                });
                 self.new_item_input_value.clear();
                 self.next_item_id += 1;
             }
-            Message::ItemToggled(id) => {
+            Message::ItemToggled(id, done) => {
                 self.items
-                    .entry(id)
-                    .and_modify(|item| item.done = !item.done);
+                    .iter_mut()
+                    .find(|item| item.id == id)
+                    .unwrap()
+                    .done = !done;
             }
             Message::DeleteItem(id) => {
-                self.items.remove(&id);
+                let idx = self.items.iter().position(|item| item.id == id).unwrap();
+                self.items.remove(idx);
             }
             Message::EditItem(id) => {
-                self.items.entry(id).and_modify(|item| item.editing = true);
+                self.items
+                    .iter_mut()
+                    .find(|item| item.id == id)
+                    .unwrap()
+                    .editing = true;
             }
             Message::ItemEdited(id, s) => {
-                self.items.entry(id).and_modify(|item| item.content = s);
+                self.items
+                    .iter_mut()
+                    .find(|item| item.id == id)
+                    .unwrap()
+                    .content = s;
             }
             Message::SaveItem(id) => {
-                self.items.entry(id).and_modify(|item| item.editing = false);
+                self.items
+                    .iter_mut()
+                    .find(|item| item.id == id)
+                    .unwrap()
+                    .editing = false;
             }
         }
     }
@@ -177,9 +188,9 @@ impl App {
             mouse_area(
                 container(row![
                     if editing {
-                        container(item_text_input(content, id))
+                        item_text_input(id, content)
                     } else {
-                        container(item_checkbox(id, content, done))
+                        item_checkbox(id, content, done)
                     },
                     horizontal_space(),
                     item_edit_btn(id, editing),
@@ -203,11 +214,11 @@ impl App {
                 .width(885)
                 .padding(20),
             )
-            .on_press(Message::ItemToggled(id))
+            .on_press(Message::ItemToggled(id, done))
             .into()
         }
 
-        fn item_text_input(content: &str, id: usize) -> Element<Message> {
+        fn item_text_input(id: usize, content: &str) -> Element<Message> {
             text_input(content, content)
                 .on_input(move |s| Message::ItemEdited(id, s))
                 .style(|_, status| text_input::Style {
@@ -238,7 +249,7 @@ impl App {
 
         fn item_checkbox(id: usize, content: &str, done: bool) -> Element<Message> {
             checkbox(content, done)
-                .on_toggle(move |_| Message::ItemToggled(id))
+                .on_toggle(move |_| Message::ItemToggled(id, done))
                 .style(|_, status| checkbox::Style {
                     background: Background::Color(Color::TRANSPARENT),
                     icon_color: color!(0x777777),
@@ -350,8 +361,8 @@ impl App {
                 vertical_space().height(30),
                 row![new_item_text_input, new_item_btn].spacing(20),
                 keyed_column(self.items.iter().map(|item| (
-                    item.1.id,
-                    item_container(item.1.id, &item.1.content, item.1.done, item.1.editing)
+                    item.id,
+                    item_container(item.id, &item.content, item.done, item.editing)
                 )))
                 .spacing(20)
             ]

@@ -1,6 +1,6 @@
 fn main() {}
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Item {
     Value(u32),
     Deleted,
@@ -8,34 +8,29 @@ pub enum Item {
 }
 
 #[derive(Debug)]
-pub enum Error {
-    TableFull,
-    ValueNotFound,
+pub struct HashTable<const SIZE: usize> {
+    table: [Item; SIZE],
 }
 
 #[derive(Debug)]
-pub struct HashTable {
-    size: usize,
-    table: Vec<Item>,
+pub enum Error {
+    TableFull,
 }
 
-impl HashTable {
-    pub fn new(size: usize) -> Self {
+impl<const SIZE: usize> HashTable<SIZE> {
+    pub fn new() -> Self {
         HashTable {
-            size,
-            table: vec![Item::Empty; size],
+            table: [Item::Empty; SIZE],
         }
     }
 
     pub fn add(&mut self, value: u32) -> Result<usize, Error> {
-        // Simple folding hashing algorithm
-
-        let key = Self::hash(value) as usize % self.size;
+        let key = Self::hash(value) as usize % self.table.len();
 
         let mut idx = key;
 
         loop {
-            if idx >= self.size {
+            if idx >= self.table.len() {
                 idx = 0;
             }
 
@@ -54,6 +49,8 @@ impl HashTable {
     }
 
     fn hash(value: u32) -> u32 {
+        // Simple folding hashing algorithm
+
         let piece_size = 2;
         let mut hash = 0;
         let mut temp = value;
@@ -67,34 +64,31 @@ impl HashTable {
         hash
     }
 
-    pub fn search(&self, value: u32) -> Result<usize, Error> {
+    pub fn search(&self, value: u32) -> Option<usize> {
         let key = Self::hash(value) as usize;
 
         let mut idx = key;
 
         loop {
-            if idx >= self.size {
+            if idx >= self.table.len() {
                 idx = 0;
             }
 
             if self.table[idx] == Item::Value(value) {
-                break Ok(idx);
+                break Some(idx);
             }
 
             if idx == key - 1 {
-                break Err(Error::ValueNotFound);
+                break None;
             } else {
                 idx += 1;
             }
         }
     }
 
-    pub fn remove(&mut self, key: usize) -> Result<(), Error> {
+    pub fn remove(&mut self, key: usize) {
         if let Item::Value(_) = self.table[key] {
             self.table[key] = Item::Deleted;
-            Ok(())
-        } else {
-            Err(Error::ValueNotFound)
         }
     }
 }

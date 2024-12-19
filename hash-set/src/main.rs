@@ -1,15 +1,15 @@
 fn main() {}
 
+#[derive(Debug)]
+pub struct HashSet<'a, const SIZE: usize> {
+    array: [Item<'a>; SIZE],
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item<'a> {
     Value(&'a str),
     Deleted,
     Empty,
-}
-
-#[derive(Debug)]
-pub struct HashSet<'a, const SIZE: usize> {
-    array: [Item<'a>; SIZE],
 }
 
 #[derive(Debug)]

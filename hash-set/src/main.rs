@@ -29,13 +29,18 @@ impl<'a, const SIZE: usize> HashSet<'a, SIZE> {
     }
 
     pub fn add(&mut self, value: &'a str) -> Result<usize, Error> {
-        let key = Self::hash(&value) as usize % self.array.len();
+        let key = Self::hash(value) as usize % self.array.len();
 
-        if let Some(pos) = self.array[key..]
+        if let Some(x) = self
+            .array
             .iter()
-            .chain(self.array[0..key].iter())
-            .position(|x| *x == Item::Empty || *x == Item::Deleted)
+            .enumerate()
+            .cycle()
+            .skip(key)
+            .take(self.array.len())
+            .find(|x| *x.1 == Item::Empty || *x.1 == Item::Deleted)
         {
+            let pos = x.0;
             self.array[pos] = Item::Value(value);
 
             Ok(pos)
@@ -45,12 +50,21 @@ impl<'a, const SIZE: usize> HashSet<'a, SIZE> {
     }
 
     pub fn search(&self, value: &str) -> Option<usize> {
-        let key = Self::hash(&value) as usize;
+        let key = Self::hash(value) as usize;
 
-        self.array[key..]
+        if let Some(x) = self
+            .array
             .iter()
-            .chain(self.array[0..key].iter())
-            .position(|x| *x == Item::Value(value))
+            .enumerate()
+            .cycle()
+            .skip(key)
+            .take(self.array.len())
+            .find(|x| *x.1 == Item::Value(value))
+        {
+            Some(x.0)
+        } else {
+            None
+        }
     }
 
     pub fn remove(&mut self, key: usize) {

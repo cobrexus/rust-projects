@@ -4,7 +4,7 @@ use std::io;
 use std::io::Write;
 
 pub fn run() {
-    // department, [employees]
+    // department -> [employees]
     let mut company: HashMap<String, Vec<String>> = HashMap::new();
 
     display_usage();

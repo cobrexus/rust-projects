@@ -1,35 +1,30 @@
-use std::io::Write;
-use std::{env, io};
+const ERROR: &str = "usage: <program_name> <code> <input_string>";
+const MEM_SIZE: usize = 30_000;
 
 fn main() {
-    let args = env::args().collect::<Vec<_>>();
+    let mut args = std::env::args();
 
-    if args.len() < 3 {
-        panic!("not enough arguments were supplied");
-    }
+    args.next();
 
-    let program = args[1].clone();
-    let input = args[2].chars().collect::<Vec<_>>();
-    let mut interpreter = Interpreter::new(program, input);
-    let output = interpreter.run();
-    for c in output {
-        print!("{}", c);
-        let _ = io::stdout().flush();
-    }
+    let program = args.next().expect(ERROR);
+    let input = args.next().expect(ERROR);
+
+    let mut interpreter = Interpreter::new(&program, &input);
+    interpreter.run();
 }
 
-struct Interpreter {
-    mem: [u8; 30_000],
+pub struct Interpreter<'a> {
+    mem: [u8; MEM_SIZE],
     ptr: usize,
     loop_stack: Vec<usize>,
-    program: String,
+    program: &'a str,
     program_idx: usize,
-    input: Vec<char>,
+    input: &'a str,
     input_idx: usize,
 }
 
-impl Interpreter {
-    fn new(program: String, input: Vec<char>) -> Self {
+impl<'a> Interpreter<'a> {
+    pub fn new(program: &'a str, input: &'a str) -> Self {
         Self {
             mem: [0; 30_000],
             ptr: 0,
@@ -41,71 +36,91 @@ impl Interpreter {
         }
     }
 
-    fn run(&mut self) -> Vec<char> {
-        let mut output: Vec<char> = vec![];
-
+    pub fn run(&mut self) {
         while self.program_idx < self.program.len() {
             match &self.program[self.program_idx..self.program_idx + 1] {
                 ">" => {
-                    if self.ptr == 29_999 {
-                        self.ptr = 0;
-                    } else {
-                        self.ptr += 1;
-                    }
+                    self.move_ptr_right();
                 }
                 "<" => {
-                    if self.ptr == 0 {
-                        self.ptr = 29_999;
-                    } else {
-                        self.ptr -= 1;
-                    }
+                    self.move_ptr_left();
                 }
                 "+" => {
-                    self.mem[self.ptr] = self.mem[self.ptr].wrapping_add(1);
+                    self.incr();
                 }
                 "-" => {
-                    self.mem[self.ptr] = self.mem[self.ptr].wrapping_sub(1);
+                    self.decr();
                 }
                 "." => {
-                    output.push(self.mem[self.ptr] as char);
+                    self.output();
                 }
                 "," => {
-                    let input_char = self.input[self.input_idx];
-                    self.mem[self.ptr] = input_char as u8;
-                    self.input_idx += 1;
+                    self.input();
                 }
                 "[" => {
-                    if self.mem[self.ptr] == 0 {
-                        let mut depth = 1;
-
-                        while depth > 0 {
-                            self.program_idx += 1;
-
-                            if &self.program[self.program_idx..self.program_idx + 1] == "[" {
-                                depth += 1;
-                            }
-
-                            if &self.program[self.program_idx..self.program_idx + 1] == "]" {
-                                depth -= 1;
-                            }
-                        }
-                    } else {
-                        self.loop_stack.push(self.program_idx);
-                    }
+                    self.loop_start();
                 }
                 "]" => {
-                    if self.mem[self.ptr] != 0 {
-                        self.program_idx = *self.loop_stack.last().unwrap();
-                    } else {
-                        self.loop_stack.pop();
-                    }
+                    self.loop_end();
                 }
                 _ => (),
             }
 
             self.program_idx += 1;
         }
+    }
 
-        output
+    fn move_ptr_right(&mut self) {
+        self.ptr = (self.ptr + 1) % MEM_SIZE;
+    }
+
+    fn move_ptr_left(&mut self) {
+        self.ptr = (self.ptr - 1 + MEM_SIZE) % MEM_SIZE;
+    }
+
+    fn incr(&mut self) {
+        self.mem[self.ptr] = self.mem[self.ptr].wrapping_add(1);
+    }
+
+    fn decr(&mut self) {
+        self.mem[self.ptr] = self.mem[self.ptr].wrapping_sub(1);
+    }
+
+    fn output(&mut self) {
+        print!("{}", self.mem[self.ptr] as char);
+    }
+
+    fn input(&mut self) {
+        let input_char = self.input.as_bytes()[self.input_idx];
+        self.mem[self.ptr] = input_char as u8;
+        self.input_idx += 1;
+    }
+
+    fn loop_start(&mut self) {
+        if self.mem[self.ptr] == 0 {
+            let mut depth = 1;
+
+            while depth > 0 {
+                self.program_idx += 1;
+
+                if &self.program[self.program_idx..self.program_idx + 1] == "[" {
+                    depth += 1;
+                }
+
+                if &self.program[self.program_idx..self.program_idx + 1] == "]" {
+                    depth -= 1;
+                }
+            }
+        } else {
+            self.loop_stack.push(self.program_idx);
+        }
+    }
+
+    fn loop_end(&mut self) {
+        if self.mem[self.ptr] != 0 {
+            self.program_idx = *self.loop_stack.last().unwrap();
+        } else {
+            self.loop_stack.pop();
+        }
     }
 }

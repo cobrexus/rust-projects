@@ -26,7 +26,7 @@ pub struct Interpreter<'a> {
 impl<'a> Interpreter<'a> {
     pub fn new(program: &'a str, input: &'a str) -> Self {
         Self {
-            mem: [0; 30_000],
+            mem: [0; MEM_SIZE],
             ptr: 0,
             loop_stack: vec![],
             program,
